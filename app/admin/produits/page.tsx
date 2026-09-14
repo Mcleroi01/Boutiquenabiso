@@ -8,7 +8,7 @@ import {
   deleteProduct,
   deleteProductStorageImages,
   getCategories,
-  getProducts,
+  getAdminProducts,
   syncProductImages,
   updateProduct,
   uploadPublicImage,
@@ -28,7 +28,7 @@ export default function AdminProductsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const [p, c] = await Promise.all([getProducts(), getCategories()]);
+    const [p, c] = await Promise.all([getAdminProducts(), getCategories()]);
     setProducts(p);
     setCategories(c);
     setLoading(false);
@@ -45,33 +45,45 @@ export default function AdminProductsPage() {
     >,
     imageFiles: File[],
   ) => {
-    let savedProduct: ProductWithCategory | null = null;
-    if (editingProduct) {
-      await updateProduct(editingProduct.id, data);
-      savedProduct = { ...editingProduct, ...data };
-    } else {
-      savedProduct = await createProduct(data as never);
-    }
-    if (savedProduct) {
-      const productId = savedProduct.id;
-      const uploadedImages = await Promise.all(
-        imageFiles.map(async (file) => {
-          const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-          return uploadPublicImage("product-images", file, path);
-        }),
-      );
-      const images = [...data.images, ...uploadedImages];
+    console.info('[product] début submit parent', { editing: Boolean(editingProduct), imageCount: imageFiles.length });
+    try {
+      console.info('[product] données produit préparées', data);
+      let savedProduct: ProductWithCategory | null = null;
       if (editingProduct) {
-        await deleteProductStorageImages(
-          editingProduct.images.filter((image) => !images.includes(image)),
-        );
+        await updateProduct(editingProduct.id, data);
+        savedProduct = { ...editingProduct, ...data };
+      } else {
+        savedProduct = await createProduct(data);
       }
-      if (uploadedImages.length) await updateProduct(productId, { images });
-      await syncProductImages(productId, images);
+      if (!savedProduct) throw new Error('Supabase n’a pas retourné le produit créé.');
+
+      const productId = savedProduct.id;
+      const uploadedImages = await Promise.all(imageFiles.map(async (file) => {
+        console.info('[product] début upload image', { name: file.name, size: file.size });
+        const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+        const url = await uploadPublicImage('product-images', file, path);
+        console.info('[product] upload image terminé', { name: file.name, path });
+        return url;
+      }));
+      const images = [...data.images, ...uploadedImages];
+      if (editingProduct) await deleteProductStorageImages(editingProduct.images.filter((image) => !images.includes(image)));
+      if (uploadedImages.length || editingProduct) await updateProduct(productId, { images });
+      if (images.length || editingProduct) {
+        console.info('[product] synchronisation product_images démarrée');
+        await syncProductImages(productId, images);
+      } else {
+        console.info('[product] aucune image à synchroniser');
+      }
+      console.info('[product] produit créé avec succès', { id: productId });
+      setModalOpen(false);
+      setEditingProduct(null);
+      void loadData().catch((reloadError) => {
+        console.error('[product] produit créé mais rechargement de la liste échoué', reloadError);
+      });
+    } catch (saveError) {
+      console.error('[product] erreur complète création produit', saveError);
+      throw saveError instanceof Error ? saveError : new Error('Erreur inconnue lors de la création du produit.');
     }
-    setModalOpen(false);
-    setEditingProduct(null);
-    await loadData();
   };
 
   const handleDelete = async (id: string) => {
@@ -147,7 +159,7 @@ export default function AdminProductsPage() {
                   Catégorie
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground">
-                  Prix
+                  Achat / vente
                 </th>
                 <th className="hidden px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground sm:table-cell">
                   Stock
@@ -196,9 +208,36 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-black">
-                        {formatPrice(product.price)}
-                      </span>
+                      <div className="text-xs font-bold leading-5">
+                        <div>
+                          Achat :{" "}
+                          {formatPrice(
+                            product.purchase_price,
+                            product.currency,
+                          )}
+                        </div>
+                        <div className="text-primary">
+                          Vente :{" "}
+                          {formatPrice(product.selling_price, product.currency)}
+                        </div>
+                        <div className="text-emerald-700">
+                          Bénéfice :{" "}
+                          {formatPrice(
+                            product.selling_price - product.purchase_price,
+                            product.currency,
+                          )}{" "}
+                          (
+                          {product.selling_price > 0
+                            ? (
+                                ((product.selling_price -
+                                  product.purchase_price) /
+                                  product.selling_price) *
+                                100
+                              ).toFixed(1)
+                            : "0.0"}
+                          %)
+                        </div>
+                      </div>
                     </td>
                     <td className="hidden px-4 py-3 sm:table-cell">
                       <span

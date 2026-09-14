@@ -11,6 +11,26 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getProducts(): Promise<ProductWithCategory[]> {
+  let { data, error } = await supabase.from('public_catalog_products').select('*').order('created_at', { ascending: false });
+  if (error?.code === 'PGRST205') {
+    console.warn('[catalog] vue publique absente, lecture de compatibilité');
+    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').order('created_at', { ascending: false }));
+  }
+  const { data: categories, error: categoryError } = await Promise.all([
+    supabase.from('categories').select('*').order('name'),
+  ]).then(([result]) => result);
+  if (error) throw error;
+  if (categoryError) throw categoryError;
+  return (data ?? []).map((product) => ({
+    ...product,
+    purchase_price: 0,
+    selling_price: product.price,
+    currency: product.currency || 'USD',
+    category: (categories ?? []).find((category) => category.id === product.category_id) ?? null,
+  })) as ProductWithCategory[];
+}
+
+export async function getAdminProducts(): Promise<ProductWithCategory[]> {
   const { data, error } = await supabase
     .from('products')
     .select('*, category:categories(*)')
@@ -20,23 +40,26 @@ export async function getProducts(): Promise<ProductWithCategory[]> {
 }
 
 export async function getProductById(id: string): Promise<ProductWithCategory | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, category:categories(*)')
-    .eq('id', id)
-    .maybeSingle();
+  let { data, error } = await supabase.from('public_catalog_products').select('*').eq('id', id).maybeSingle();
+  if (error?.code === 'PGRST205') {
+    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('id', id).maybeSingle());
+  }
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  return { ...data, purchase_price: 0, selling_price: data.price, currency: data.currency || 'USD' } as ProductWithCategory;
 }
 
 export async function getFeaturedProducts(): Promise<ProductWithCategory[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, category:categories(*)')
+  let { data, error } = await supabase
+    .from('public_catalog_products')
+    .select('*')
     .eq('featured', true)
     .order('created_at', { ascending: false });
+  if (error?.code === 'PGRST205') {
+    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('featured', true).order('created_at', { ascending: false }));
+  }
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((product) => ({ ...product, purchase_price: 0, selling_price: product.price, currency: product.currency || 'USD' })) as ProductWithCategory[];
 }
 
 export async function getSettings(): Promise<Record<string, string>> {
@@ -117,6 +140,21 @@ export async function createQuote(input: {
     platform: input.platform || 'Non précisée',
     image_url: input.image_path ?? null,
   };
+  const { data: rpcQuote, error: rpcError } = await supabase.rpc('submit_quote', {
+    quote_full_name: input.full_name,
+    quote_whatsapp: input.whatsapp,
+    quote_platform: input.platform || 'Non précisée',
+    quote_product_link: input.product_link ?? null,
+    quote_product_description: input.product_description,
+    quote_quantity: input.quantity,
+    quote_image_paths: input.image_paths ?? [],
+    quote_message: input.message ?? null,
+  });
+  if (!rpcError && rpcQuote) {
+    console.info('[quote] insertion réussie avec ses images');
+    return rpcQuote as Quote;
+  }
+  if (rpcError) console.warn('[quote] RPC indisponible, fallback insert', rpcError.message);
   let { error } = await supabase.from('quotes').insert(canonicalPayload);
   if (error?.code === 'PGRST204' && error.message.includes("'image_paths'")) {
     console.warn('[quote] colonne image_paths absente, insertion sans cette colonne');
@@ -177,14 +215,14 @@ export async function convertQuote(id: string, unitPrice: number, notes?: string
 }
 
 export async function uploadPublicImage(bucket: 'quote-images' | 'product-images', file: File, path: string): Promise<string> {
-  console.info('[quote] upload image démarré', { bucket, path, size: file.size, type: file.type });
+  console.info('[storage] upload image démarré', { bucket, path, size: file.size, type: file.type });
   const { error } = await supabase.storage.from(bucket).upload(path, file, { cacheControl: '3600', upsert: false });
   if (error) {
-    console.error('[quote] upload image échoué', error);
+    console.error('[storage] upload image échoué', error);
     throw new Error(error.message || 'Supabase Storage a refusé l’image.');
   }
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  console.info('[quote] upload image réussi');
+  console.info('[storage] upload image terminé', { bucket, path });
   return data.publicUrl;
 }
 
@@ -200,24 +238,47 @@ export async function deleteProductStorageImages(imageUrls: string[]): Promise<v
 }
 
 export async function syncProductImages(productId: string, imageUrls: string[]): Promise<void> {
+  console.info('[product] synchronisation product_images', { productId, imageCount: imageUrls.length });
   const { error: deleteError } = await supabase.from('product_images').delete().eq('product_id', productId);
-  if (deleteError) throw deleteError;
+  if (deleteError) {
+    console.error('[product] erreur suppression product_images', deleteError);
+    throw new Error(deleteError.message || 'Impossible de synchroniser les images du produit.');
+  }
   if (!imageUrls.length) return;
   const { error } = await supabase.from('product_images').insert(
     imageUrls.map((image_url, sort_order) => ({ product_id: productId, image_url, storage_path: image_url, sort_order })),
   );
-  if (error) throw error;
+  if (error) {
+    console.error('[product] erreur insertion product_images', error);
+    throw new Error(error.message || 'Impossible d’enregistrer les images du produit.');
+  }
+  console.info('[product] product_images synchronisées', { productId, imageCount: imageUrls.length });
 }
 
 export async function createProduct(input: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> {
+  console.info('[product] début insertion Supabase', {
+    name: input.name,
+    purchase_price: input.purchase_price,
+    selling_price: input.selling_price,
+    currency: input.currency,
+  });
   const { data, error } = await supabase.from('products').insert(input).select().single();
-  if (error) throw error;
+  if (error) {
+    console.error('[product] erreur Supabase insertion', error);
+    throw new Error(error.message || 'Supabase a refusé la création du produit.');
+  }
+  console.info('[product] insertion Supabase terminée', { id: data?.id });
   return data;
 }
 
 export async function updateProduct(id: string, input: Partial<Product>): Promise<void> {
+  console.info('[product] début mise à jour Supabase', { id });
   const { error } = await supabase.from('products').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id);
-  if (error) throw error;
+  if (error) {
+    console.error('[product] erreur Supabase mise à jour', error);
+    throw new Error(error.message || 'Supabase a refusé la mise à jour du produit.');
+  }
+  console.info('[product] mise à jour Supabase terminée', { id });
 }
 
 export async function deleteProduct(id: string): Promise<void> {

@@ -31,6 +31,9 @@ export interface Product {
   name: string;
   description: string | null;
   price: number;
+  purchase_price: number;
+  selling_price: number;
+  currency: string;
   category_id: string | null;
   stock_status: StockStatus;
   quantity: number;
@@ -75,6 +78,15 @@ export interface Quote {
   converted_order_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface QuoteImage {
+  id: string;
+  quote_id: string;
+  storage_path: string;
+  image_url: string;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface Setting {

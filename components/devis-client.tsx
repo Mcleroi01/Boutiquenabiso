@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   ImagePlus,
@@ -36,15 +37,26 @@ export function DevisClient() {
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  useEffect(
+    () => () =>
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview)),
+    [imagePreviews],
+  );
+
   const handleImageChange = (files: FileList | null) => {
     setError("");
     if (!files?.length) return;
     const selected = Array.from(files);
+    if (selected.length > 3) {
+      setError("Vous pouvez joindre au maximum 3 images.");
+      return;
+    }
     if (selected.some((file) => !acceptedImageTypes.includes(file.type))) {
       setError("Image invalide. Utilisez un fichier JPG, PNG ou WebP.");
       return;
@@ -54,6 +66,17 @@ export function DevisClient() {
       return;
     }
     setImages(selected);
+    setImagePreviews(selected.map((file) => URL.createObjectURL(file)));
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    setImages((current) =>
+      current.filter((_, imageIndex) => imageIndex !== index),
+    );
+    setImagePreviews((current) =>
+      current.filter((_, previewIndex) => previewIndex !== index),
+    );
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -108,6 +131,7 @@ export function DevisClient() {
       setDescription("");
       setQuantity("1");
       setImages([]);
+      setImagePreviews([]);
       setMessage("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (submissionError) {
@@ -273,6 +297,34 @@ export function DevisClient() {
                   ? `${images.length} image(s) sélectionnée(s)`
                   : "Choisir une ou plusieurs images (5 Mo maximum par image)"}
               </button>
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {imagePreviews.map((preview, index) => (
+                    <div
+                      key={preview}
+                      className="relative aspect-square overflow-hidden rounded-xl border border-primary/30 bg-muted"
+                    >
+                      <img
+                        src={preview}
+                        alt={`Image ${index + 1} : ${images[index]?.name}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <span className="absolute bottom-1 left-1 max-w-[90%] truncate rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                        {index + 1}. {images[index]?.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        aria-label={`Supprimer l'image ${index + 1}`}
+                        className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-destructive shadow"
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </label>
             <label className="block space-y-2 text-sm font-bold">
               <span>Message ou détails supplémentaires</span>

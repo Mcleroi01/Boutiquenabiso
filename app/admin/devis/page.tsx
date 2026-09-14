@@ -191,24 +191,33 @@ export default function AdminQuotesPage() {
             const customerName = quote.full_name || quote.customer_name;
             const customerPhone = quote.whatsapp || quote.customer_phone;
             const imageUrl = quote.image_path || quote.image_url;
+            const imageUrls = quote.image_paths?.length
+              ? quote.image_paths
+              : imageUrl
+                ? [imageUrl]
+                : [];
             const platform = quote.platform || "Non précisée";
             return (
               <article key={quote.id} className="brand-surface rounded-2xl p-5">
                 <div className="flex flex-col gap-5 lg:flex-row lg:justify-between">
                   <div className="flex min-w-0 gap-4">
-                    {imageUrl ? (
-                      <a
-                        href={imageUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted"
-                      >
-                        <img
-                          src={imageUrl}
-                          alt="Produit demandé"
-                          className="h-full w-full object-cover"
-                        />
-                      </a>
+                    {imageUrls.length ? (
+                      <div className="grid h-20 w-20 shrink-0 grid-cols-2 gap-1 overflow-hidden rounded-xl border border-border bg-muted">
+                        {imageUrls.slice(0, 4).map((url, imageIndex) => (
+                          <a
+                            key={url}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={url}
+                              alt={`Image ${imageIndex + 1} du produit demandé`}
+                              className="h-full w-full object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
                     ) : (
                       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                         <FileText className="h-6 w-6" />

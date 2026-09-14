@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Plus, Trash2, Loader2, Star } from "lucide-react";
 import {
   ProductWithCategory,
@@ -13,7 +14,9 @@ import { cn } from "@/lib/utils";
 interface FormData {
   name: string;
   description: string;
-  price: string;
+  purchase_price: string;
+  selling_price: string;
+  currency: string;
   category_id: string;
   stock_status: StockStatus;
   quantity: string;
@@ -42,35 +45,30 @@ export function ProductFormModal({
   const [form, setForm] = useState<FormData>({
     name: product?.name || "",
     description: product?.description || "",
-    price: product?.price?.toString() || "",
+    purchase_price: product?.purchase_price?.toString() || "0",
+    selling_price:
+      product?.selling_price?.toString() || product?.price?.toString() || "",
+    currency: product?.currency || "USD",
     category_id: product?.category_id || categories[0]?.id || "",
     stock_status: product?.stock_status || "order",
     quantity: product?.quantity?.toString() || "0",
     variants: product?.variants || [],
-    images: product?.images || [""],
+    images: product?.images || [],
     featured: product?.featured || false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const imagePreviewsRef = useRef<string[]>([]);
+
+  useEffect(() => () => imagePreviewsRef.current.forEach((preview) => URL.revokeObjectURL(preview)), []);
 
   const update = (
     field: keyof FormData,
     value: string | boolean | VariantGroup[] | string[],
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleImageChange = (index: number, value: string) => {
-    const images = [...form.images];
-    images[index] = value;
-    update("images", images);
-  };
-
-  const addImage = () => update("images", [...form.images, ""]);
-  const removeImage = (index: number) => {
-    const images = form.images.filter((_, i) => i !== index);
-    update("images", images.length ? images : [""]);
   };
 
   const handleImageFiles = (files: FileList | null) => {
@@ -89,6 +87,23 @@ export function ProductFormModal({
     }
     setError("");
     setImageFiles((current) => [...current, ...selected]);
+    const previews = selected.map((file) => URL.createObjectURL(file));
+    imagePreviewsRef.current = [...imagePreviewsRef.current, ...previews];
+    setImagePreviews((current) => [
+      ...current,
+      ...previews,
+    ]);
+  };
+
+  const removeSelectedImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    imagePreviewsRef.current = imagePreviewsRef.current.filter((_, previewIndex) => previewIndex !== index);
+    setImageFiles((current) =>
+      current.filter((_, fileIndex) => fileIndex !== index),
+    );
+    setImagePreviews((current) =>
+      current.filter((_, previewIndex) => previewIndex !== index),
+    );
   };
 
   const addVariant = () => {
@@ -142,26 +157,49 @@ export function ProductFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.info('[product] début submit modal');
     setError("");
     if (!form.name.trim()) {
+      console.warn('[product] validation échouée: nom manquant');
       setError("Le nom est requis.");
       return;
     }
-    if (!form.price || parseFloat(form.price) < 0) {
-      setError("Prix invalide.");
+    const purchasePrice = Number(form.purchase_price);
+    const sellingPrice = Number(form.selling_price);
+    const quantity = Number(form.quantity);
+    if (
+      !Number.isFinite(purchasePrice) ||
+      purchasePrice < 0 ||
+      !Number.isFinite(sellingPrice) ||
+      sellingPrice < 0
+    ) {
+      console.warn('[product] validation échouée: prix invalides', { purchasePrice, sellingPrice });
+      setError(
+        "Les prix d’achat et de vente doivent être des nombres positifs.",
+      );
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 0) {
+      console.warn('[product] validation échouée: quantité invalide', quantity);
+      setError('La quantité doit être un nombre entier positif ou nul.');
       return;
     }
 
+    console.info('[product] validation terminée');
     setSaving(true);
     try {
+      console.info('[product] données du produit préparées');
       await onSave(
         {
           name: form.name.trim(),
           description: form.description.trim() || null,
-          price: parseFloat(form.price),
+          price: sellingPrice,
+          purchase_price: purchasePrice,
+          selling_price: sellingPrice,
+          currency: form.currency,
           category_id: form.category_id || null,
           stock_status: form.stock_status,
-          quantity: parseInt(form.quantity) || 0,
+          quantity,
           variants: form.variants.filter(
             (v) => v.name.trim() && v.options.some((o) => o.trim()),
           ),
@@ -171,6 +209,7 @@ export function ProductFormModal({
         imageFiles,
       );
     } catch (err) {
+      console.error('[product] erreur affichée dans le modal', err);
       setError(
         err instanceof Error ? err.message : "Erreur lors de la sauvegarde.",
       );
@@ -225,35 +264,62 @@ export function ProductFormModal({
             />
           </div>
 
-          {/* Price + Category */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Prices + Category */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Prix (USD) *</label>
+              <label className="text-sm font-semibold">
+                Prix d’achat (USD) *
+              </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                value={form.price}
-                onChange={(e) => update("price", e.target.value)}
+                value={form.purchase_price}
+                onChange={(e) => update("purchase_price", e.target.value)}
                 className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                placeholder="1250"
+                placeholder="10"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Catégorie</label>
+              <label className="text-sm font-semibold">
+                Prix de vente (USD) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.selling_price}
+                onChange={(e) => update("selling_price", e.target.value)}
+                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="15"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Devise</label>
               <select
-                value={form.category_id}
-                onChange={(e) => update("category_id", e.target.value)}
+                value={form.currency}
+                onChange={(e) => update("currency", e.target.value)}
                 className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
-                <option value="">Aucune</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
+                <option value="USD">USD ($)</option>
+                <option value="CDF">CDF (FC)</option>
               </select>
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Catégorie</label>
+            <select
+              value={form.category_id}
+              onChange={(e) => update("category_id", e.target.value)}
+              className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">Aucune</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Stock status + quantity */}
@@ -325,36 +391,62 @@ export function ProductFormModal({
           {/* Images */}
           <div className="space-y-2">
             <label className="text-sm font-semibold">Images du produit</label>
-            <div className="space-y-2">
-              {form.images.map((img, i) => (
-                <div key={i} className="flex gap-2">
-                  <input
-                    type="url"
-                    value={img}
-                    onChange={(e) => handleImageChange(i, e.target.value)}
-                    className="flex-1 rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    placeholder="https://images.pexels.com/..."
-                  />
-                  {form.images.length > 1 && (
+            {form.images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {form.images.map((img, index) => (
+                  <div
+                    key={img}
+                    className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-muted"
+                  >
+                    <img
+                      src={img}
+                      alt={`Image existante ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       type="button"
-                      onClick={() => removeImage(i)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-border hover:bg-destructive/10 transition-colors"
+                      onClick={() =>
+                        update(
+                          "images",
+                          form.images.filter(
+                            (_, imageIndex) => imageIndex !== index,
+                          ),
+                        )
+                      }
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-destructive shadow"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addImage}
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Ajouter une image
-            </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imagePreviews.map((preview, index) => (
+                  <div
+                    key={preview}
+                    className="group relative aspect-square overflow-hidden rounded-xl border border-primary/30 bg-muted"
+                  >
+                    <img
+                      src={preview}
+                      alt={`Nouvelle image ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedImage(index)}
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-destructive shadow"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                      {imageFiles[index]?.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-4 text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary">
               <input
                 type="file"
@@ -364,7 +456,7 @@ export function ProductFormModal({
                 className="sr-only"
               />
               <Plus className="h-4 w-4" />
-              Importer des images dans Supabase Storage
+              Sélectionner des images à importer
             </label>
             {imageFiles.length > 0 && (
               <p className="text-xs text-muted-foreground">
