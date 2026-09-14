@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 42 38% 98%;
+    --foreground: 224 38% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 38% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 38% 12%;
+    --primary: 164 78% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 54% 92%;
+    --secondary-foreground: 224 38% 12%;
+    --muted: 40 33% 94%;
+    --muted-foreground: 222 11% 43%;
+    --accent: 28 94% 93%;
+    --accent-foreground: 20 83% 31%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 36 24% 86%;
+    --input: 36 24% 86%;
+    --ring: 164 78% 27%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    @apply bg-accent text-accent-foreground;
+  }
+}
+
+@layer utilities {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .brand-surface {
+    @apply border border-border/70 bg-white/90 shadow-sm shadow-slate-900/5 backdrop-blur;
+  }
+  .focus-ring {
+    @apply outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/20;
+  }
+  .soft-grid {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
