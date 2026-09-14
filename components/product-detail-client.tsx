@@ -16,6 +16,7 @@ import {
 import { ProductWithCategory, VariantGroup } from '@/lib/types';
 import { buildOrderMessage, buildWhatsAppLink, formatPrice } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 export function ProductDetailClient({
   product,
@@ -112,9 +113,7 @@ export function ProductDetailClient({
             <div className="mt-2 text-4xl font-black tracking-tight">{formatPrice(product.price)}</div>
           </div>
 
-          {product.description && (
-            <p className="text-sm leading-relaxed text-muted-foreground">{product.description}</p>
-          )}
+          {product.description && <div className="product-description text-sm leading-relaxed text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }} />}
 
           {variants.length > 0 && (
             <div className="brand-surface space-y-4 rounded-2xl p-5">

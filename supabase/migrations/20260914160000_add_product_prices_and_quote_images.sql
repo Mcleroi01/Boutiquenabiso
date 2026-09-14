@@ -41,6 +41,15 @@ create policy "auth_delete_products" on public.products for delete
 to authenticated using (public.is_admin());
 
 -- Multiple quote images are persisted as rows, not base64 or JSON blobs.
+insert into public.product_images (product_id, storage_path, image_url, sort_order)
+select p.id, image_item.image_url, image_item.image_url, image_item.image_index - 1
+from public.products p
+cross join lateral jsonb_array_elements_text(coalesce(p.images, '[]'::jsonb)) with ordinality as image_item(image_url, image_index)
+where not exists (
+  select 1 from public.product_images existing
+  where existing.product_id = p.id and existing.sort_order = image_item.image_index - 1
+);
+
 create table if not exists public.quote_images (
   id uuid primary key default gen_random_uuid(),
   quote_id uuid not null references public.quotes(id) on delete cascade,

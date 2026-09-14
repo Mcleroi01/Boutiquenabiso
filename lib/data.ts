@@ -246,13 +246,19 @@ export async function syncProductImages(productId: string, imageUrls: string[]):
   }
   if (!imageUrls.length) return;
   const { error } = await supabase.from('product_images').insert(
-    imageUrls.map((image_url, sort_order) => ({ product_id: productId, image_url, storage_path: image_url, sort_order })),
+    imageUrls.map((image_url, sort_order) => ({ product_id: productId, image_url, storage_path: getStoragePath('product-images', image_url), sort_order })),
   );
   if (error) {
     console.error('[product] erreur insertion product_images', error);
     throw new Error(error.message || 'Impossible d’enregistrer les images du produit.');
   }
   console.info('[product] product_images synchronisées', { productId, imageCount: imageUrls.length });
+}
+
+function getStoragePath(bucket: string, publicUrl: string): string {
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const index = publicUrl.indexOf(marker);
+  return index >= 0 ? decodeURIComponent(publicUrl.slice(index + marker.length)) : publicUrl;
 }
 
 export async function createProduct(input: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> {

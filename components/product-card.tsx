@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, MessageCircle, Package, Tag } from 'lucide-react';
 import { ProductWithCategory } from '@/lib/types';
 import { buildOrderMessage, buildWhatsAppLink, formatPrice } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 export function ProductCard({
   product,
@@ -80,11 +81,7 @@ export function ProductCard({
           <h3 className="min-h-[2.5rem] text-sm font-bold leading-snug line-clamp-2 transition-colors group-hover:text-primary">
             {product.name}
           </h3>
-          {product.description && (
-            <p className="min-h-[2.5rem] text-xs leading-relaxed text-muted-foreground line-clamp-2">
-              {product.description}
-            </p>
-          )}
+          {product.description && <div className="min-h-[2.5rem] line-clamp-2 text-xs leading-relaxed text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }} />}
           {featuredVariants.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {featuredVariants.map((variant) => (

@@ -10,6 +10,7 @@ import {
   VariantGroup,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { RichTextEditor } from "./rich-text-editor";
 
 interface FormData {
   name: string;
@@ -62,7 +63,13 @@ export function ProductFormModal({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const imagePreviewsRef = useRef<string[]>([]);
 
-  useEffect(() => () => imagePreviewsRef.current.forEach((preview) => URL.revokeObjectURL(preview)), []);
+  useEffect(
+    () => () =>
+      imagePreviewsRef.current.forEach((preview) =>
+        URL.revokeObjectURL(preview),
+      ),
+    [],
+  );
 
   const update = (
     field: keyof FormData,
@@ -89,21 +96,39 @@ export function ProductFormModal({
     setImageFiles((current) => [...current, ...selected]);
     const previews = selected.map((file) => URL.createObjectURL(file));
     imagePreviewsRef.current = [...imagePreviewsRef.current, ...previews];
-    setImagePreviews((current) => [
-      ...current,
-      ...previews,
-    ]);
+    setImagePreviews((current) => [...current, ...previews]);
   };
 
   const removeSelectedImage = (index: number) => {
     URL.revokeObjectURL(imagePreviews[index]);
-    imagePreviewsRef.current = imagePreviewsRef.current.filter((_, previewIndex) => previewIndex !== index);
+    imagePreviewsRef.current = imagePreviewsRef.current.filter(
+      (_, previewIndex) => previewIndex !== index,
+    );
     setImageFiles((current) =>
       current.filter((_, fileIndex) => fileIndex !== index),
     );
     setImagePreviews((current) =>
       current.filter((_, previewIndex) => previewIndex !== index),
     );
+  };
+
+  const moveExistingImage = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= form.images.length) return;
+    const images = [...form.images];
+    [images[index], images[target]] = [images[target], images[index]];
+    update("images", images);
+  };
+
+  const moveSelectedImage = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= imageFiles.length) return;
+    const files = [...imageFiles];
+    const previews = [...imagePreviews];
+    [files[index], files[target]] = [files[target], files[index]];
+    [previews[index], previews[target]] = [previews[target], previews[index]];
+    setImageFiles(files);
+    setImagePreviews(previews);
   };
 
   const addVariant = () => {
@@ -157,10 +182,10 @@ export function ProductFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.info('[product] début submit modal');
+    console.info("[product] début submit modal");
     setError("");
     if (!form.name.trim()) {
-      console.warn('[product] validation échouée: nom manquant');
+      console.warn("[product] validation échouée: nom manquant");
       setError("Le nom est requis.");
       return;
     }
@@ -173,22 +198,32 @@ export function ProductFormModal({
       !Number.isFinite(sellingPrice) ||
       sellingPrice < 0
     ) {
-      console.warn('[product] validation échouée: prix invalides', { purchasePrice, sellingPrice });
+      console.warn("[product] validation échouée: prix invalides", {
+        purchasePrice,
+        sellingPrice,
+      });
       setError(
         "Les prix d’achat et de vente doivent être des nombres positifs.",
       );
       return;
     }
     if (!Number.isInteger(quantity) || quantity < 0) {
-      console.warn('[product] validation échouée: quantité invalide', quantity);
-      setError('La quantité doit être un nombre entier positif ou nul.');
+      console.warn("[product] validation échouée: quantité invalide", quantity);
+      setError("La quantité doit être un nombre entier positif ou nul.");
+      return;
+    }
+    const imageCount = form.images.length + imageFiles.length;
+    const requiresMinimumImages = !product || product.images.length >= 5;
+    if (requiresMinimumImages && imageCount < 5) {
+      console.warn("[product] validation échouée: moins de 5 images", imageCount);
+      setError("Veuillez ajouter au moins 5 images.");
       return;
     }
 
-    console.info('[product] validation terminée');
+    console.info("[product] validation terminée");
     setSaving(true);
     try {
-      console.info('[product] données du produit préparées');
+      console.info("[product] données du produit préparées");
       await onSave(
         {
           name: form.name.trim(),
@@ -209,7 +244,7 @@ export function ProductFormModal({
         imageFiles,
       );
     } catch (err) {
-      console.error('[product] erreur affichée dans le modal', err);
+      console.error("[product] erreur affichée dans le modal", err);
       setError(
         err instanceof Error ? err.message : "Erreur lors de la sauvegarde.",
       );
@@ -255,13 +290,7 @@ export function ProductFormModal({
           {/* Description */}
           <div className="space-y-2">
             <label className="text-sm font-semibold">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-              placeholder="Description du produit..."
-            />
+            <RichTextEditor value={form.description} onChange={(value) => update("description", value)} />
           </div>
 
           {/* Prices + Category */}
@@ -391,6 +420,9 @@ export function ProductFormModal({
           {/* Images */}
           <div className="space-y-2">
             <label className="text-sm font-semibold">Images du produit</label>
+            <p className={cn("text-xs font-semibold", form.images.length + imageFiles.length < 5 ? "text-amber-700" : "text-emerald-700")}>
+              {form.images.length + imageFiles.length}/5 images minimum
+            </p>
             {form.images.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {form.images.map((img, index) => (
@@ -417,6 +449,7 @@ export function ProductFormModal({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" aria-label="Déplacer l’image vers la gauche" onClick={() => moveExistingImage(index, -1)} className="rounded bg-white/90 px-1.5 text-xs shadow">←</button><button type="button" aria-label="Déplacer l’image vers la droite" onClick={() => moveExistingImage(index, 1)} className="rounded bg-white/90 px-1.5 text-xs shadow">→</button></div>
                   </div>
                 ))}
               </div>
@@ -440,6 +473,7 @@ export function ProductFormModal({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    <div className="absolute bottom-1 left-1 flex gap-1"><button type="button" aria-label="Déplacer l’image vers la gauche" onClick={() => moveSelectedImage(index, -1)} className="rounded bg-white/90 px-1.5 text-xs shadow">←</button><button type="button" aria-label="Déplacer l’image vers la droite" onClick={() => moveSelectedImage(index, 1)} className="rounded bg-white/90 px-1.5 text-xs shadow">→</button></div>
                     <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
                       {imageFiles[index]?.name}
                     </span>
@@ -464,6 +498,7 @@ export function ProductFormModal({
                 importée(s).
               </p>
             )}
+            {product && product.images.length < 5 && <p className="text-xs font-semibold text-amber-700">Ancien produit incomplet : {product.images.length} image(s). Ajoutez des images pour atteindre le minimum recommandé de 5.</p>}
           </div>
 
           {/* Variants */}

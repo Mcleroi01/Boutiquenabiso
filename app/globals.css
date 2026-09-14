@@ -63,6 +63,17 @@
       linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+  .rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+  .rich-editor h2, .product-description h2 { @apply mt-4 text-xl font-black text-foreground; }
+  .rich-editor h3, .product-description h3 { @apply mt-3 text-lg font-bold text-foreground; }
+  .rich-editor p, .product-description p { @apply my-2; }
+  .rich-editor ul, .product-description ul { @apply my-2 list-disc pl-6; }
+  .rich-editor ol, .product-description ol { @apply my-2 list-decimal pl-6; }
+  .rich-editor a, .product-description a { @apply text-primary underline; }
 }
 
 @keyframes fade-in {

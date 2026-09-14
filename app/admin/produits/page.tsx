@@ -45,44 +45,75 @@ export default function AdminProductsPage() {
     >,
     imageFiles: File[],
   ) => {
-    console.info('[product] début submit parent', { editing: Boolean(editingProduct), imageCount: imageFiles.length });
+    console.info("[product] début submit parent", {
+      editing: Boolean(editingProduct),
+      imageCount: imageFiles.length,
+    });
+        let newlyCreatedProductId: string | null = null;
     try {
-      console.info('[product] données produit préparées', data);
+      console.info("[product] données produit préparées", data);
       let savedProduct: ProductWithCategory | null = null;
       if (editingProduct) {
         await updateProduct(editingProduct.id, data);
         savedProduct = { ...editingProduct, ...data };
       } else {
         savedProduct = await createProduct(data);
+          newlyCreatedProductId = savedProduct?.id || null;
       }
-      if (!savedProduct) throw new Error('Supabase n’a pas retourné le produit créé.');
+      if (!savedProduct)
+        throw new Error("Supabase n’a pas retourné le produit créé.");
 
       const productId = savedProduct.id;
-      const uploadedImages = await Promise.all(imageFiles.map(async (file) => {
-        console.info('[product] début upload image', { name: file.name, size: file.size });
-        const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
-        const url = await uploadPublicImage('product-images', file, path);
-        console.info('[product] upload image terminé', { name: file.name, path });
-        return url;
-      }));
+      const uploadedImages = await Promise.all(
+        imageFiles.map(async (file) => {
+          console.info("[product] début upload image", {
+            name: file.name,
+            size: file.size,
+          });
+          const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+          const url = await uploadPublicImage("product-images", file, path);
+          console.info("[product] upload image terminé", {
+            name: file.name,
+            path,
+          });
+          return url;
+        }),
+      );
       const images = [...data.images, ...uploadedImages];
-      if (editingProduct) await deleteProductStorageImages(editingProduct.images.filter((image) => !images.includes(image)));
-      if (uploadedImages.length || editingProduct) await updateProduct(productId, { images });
+      if (editingProduct)
+        await deleteProductStorageImages(
+          editingProduct.images.filter((image) => !images.includes(image)),
+        );
+      if (uploadedImages.length || editingProduct)
+        await updateProduct(productId, { images });
       if (images.length || editingProduct) {
-        console.info('[product] synchronisation product_images démarrée');
+        console.info("[product] synchronisation product_images démarrée");
         await syncProductImages(productId, images);
       } else {
-        console.info('[product] aucune image à synchroniser');
+        console.info("[product] aucune image à synchroniser");
       }
-      console.info('[product] produit créé avec succès', { id: productId });
+      console.info("[product] produit créé avec succès", { id: productId });
       setModalOpen(false);
       setEditingProduct(null);
       void loadData().catch((reloadError) => {
-        console.error('[product] produit créé mais rechargement de la liste échoué', reloadError);
+        console.error(
+          "[product] produit créé mais rechargement de la liste échoué",
+          reloadError,
+        );
       });
     } catch (saveError) {
-      console.error('[product] erreur complète création produit', saveError);
-      throw saveError instanceof Error ? saveError : new Error('Erreur inconnue lors de la création du produit.');
+        if (newlyCreatedProductId) {
+          try {
+            await deleteProduct(newlyCreatedProductId);
+            console.warn('[product] produit partiel supprimé après échec', newlyCreatedProductId);
+          } catch (rollbackError) {
+            console.error('[product] échec du rollback produit', rollbackError);
+          }
+        }
+      console.error("[product] erreur complète création produit", saveError);
+      throw saveError instanceof Error
+        ? saveError
+        : new Error("Erreur inconnue lors de la création du produit.");
     }
   };
 
@@ -199,6 +230,7 @@ export default function AdminProductsPage() {
                               En vedette
                             </span>
                           )}
+                          {product.images.length < 5 && <span className="mt-1 block text-xs font-bold text-amber-700">Attention : {product.images.length}/5 images</span>}
                         </div>
                       </div>
                     </td>
