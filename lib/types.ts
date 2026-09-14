@@ -9,6 +9,10 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled';
 
+export type QuoteStatus = 'pending' | 'reviewing' | 'quoted' | 'accepted' | 'rejected' | 'converted';
+
+export type QuotePlatform = 'Pinduoduo' | 'Xianyu' | '1688' | 'Alibaba' | 'Shein' | 'Autre' | 'Non précisée';
+
 export interface VariantGroup {
   name: string;
   options: string[];
@@ -51,6 +55,28 @@ export interface Order {
   updated_at: string;
 }
 
+export interface Quote {
+  id: string;
+  full_name?: string;
+  whatsapp?: string;
+  image_path?: string | null;
+  image_paths?: string[] | null;
+  message?: string | null;
+  customer_name: string;
+  customer_phone: string;
+  platform: QuotePlatform | null;
+  product_link: string | null;
+  product_description: string;
+  quantity: number;
+  image_url: string | null;
+  status: QuoteStatus;
+  proposed_price: number | null;
+  admin_note: string | null;
+  converted_order_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Setting {
   id: string;
   key: string;
@@ -83,3 +109,23 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  pending: 'En attente',
+  reviewing: 'En analyse',
+  quoted: 'Devis envoyé',
+  accepted: 'Accepté',
+  rejected: 'Refusé',
+  converted: 'Converti en commande',
+};
+
+export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
+  pending: 'bg-amber-100 text-amber-700 border-amber-200',
+  reviewing: 'bg-blue-100 text-blue-700 border-blue-200',
+  quoted: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  accepted: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  rejected: 'bg-red-100 text-red-700 border-red-200',
+  converted: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+};
+
+export const QUOTE_STATUSES = Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[];

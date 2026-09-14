@@ -1,20 +1,30 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { ProductFormModal } from '@/components/admin/product-form-modal';
-import { createProduct, deleteProduct, getCategories, getProducts, updateProduct } from '@/lib/data';
-import { Category, ProductWithCategory } from '@/lib/types';
-import { formatPrice } from '@/lib/whatsapp';
-import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ProductFormModal } from "@/components/admin/product-form-modal";
+import {
+  createProduct,
+  deleteProduct,
+  deleteProductStorageImages,
+  getCategories,
+  getProducts,
+  syncProductImages,
+  updateProduct,
+  uploadPublicImage,
+} from "@/lib/data";
+import { Category, ProductWithCategory } from "@/lib/types";
+import { formatPrice } from "@/lib/whatsapp";
+import { cn } from "@/lib/utils";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductWithCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ProductWithCategory | null>(null);
+  const [editingProduct, setEditingProduct] =
+    useState<ProductWithCategory | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -28,11 +38,36 @@ export default function AdminProductsPage() {
     loadData();
   }, [loadData]);
 
-  const handleSave = async (data: Omit<ProductWithCategory, 'id' | 'created_at' | 'updated_at' | 'category'>) => {
+  const handleSave = async (
+    data: Omit<
+      ProductWithCategory,
+      "id" | "created_at" | "updated_at" | "category"
+    >,
+    imageFiles: File[],
+  ) => {
+    let savedProduct: ProductWithCategory | null = null;
     if (editingProduct) {
       await updateProduct(editingProduct.id, data);
+      savedProduct = { ...editingProduct, ...data };
     } else {
-      await createProduct(data as never);
+      savedProduct = await createProduct(data as never);
+    }
+    if (savedProduct) {
+      const productId = savedProduct.id;
+      const uploadedImages = await Promise.all(
+        imageFiles.map(async (file) => {
+          const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+          return uploadPublicImage("product-images", file, path);
+        }),
+      );
+      const images = [...data.images, ...uploadedImages];
+      if (editingProduct) {
+        await deleteProductStorageImages(
+          editingProduct.images.filter((image) => !images.includes(image)),
+        );
+      }
+      if (uploadedImages.length) await updateProduct(productId, { images });
+      await syncProductImages(productId, images);
     }
     setModalOpen(false);
     setEditingProduct(null);
@@ -40,7 +75,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce produit ?')) return;
+    if (!confirm("Supprimer ce produit ?")) return;
     setDeletingId(id);
     try {
       await deleteProduct(id);
@@ -50,7 +85,9 @@ export default function AdminProductsPage() {
     }
   };
 
-  const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   if (loading) {
     return (
@@ -65,9 +102,13 @@ export default function AdminProductsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Catalogue</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            Catalogue
+          </p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">Produits</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{products.length} produits dans le catalogue.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {products.length} produits dans le catalogue.
+          </p>
         </div>
         <button
           onClick={() => {
@@ -99,49 +140,78 @@ export default function AdminProductsPage() {
           <table className="w-full min-w-[760px]">
             <thead className="border-b border-border/70 bg-muted/60">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground">Produit</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground md:table-cell">Catégorie</th>
-                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground">Prix</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground sm:table-cell">Stock</th>
-                <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide text-muted-foreground">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground">
+                  Produit
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground md:table-cell">
+                  Catégorie
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground">
+                  Prix
+                </th>
+                <th className="hidden px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-muted-foreground sm:table-cell">
+                  Stock
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wide text-muted-foreground">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/70">
               {filtered.length > 0 ? (
                 filtered.map((product) => (
-                  <tr key={product.id} className="transition-colors hover:bg-muted/40">
+                  <tr
+                    key={product.id}
+                    className="transition-colors hover:bg-muted/40"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted/50">
                           {product.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+                            <img
+                              src={product.images[0]}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
                             <Package className="h-5 w-5 text-muted-foreground/40" />
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="max-w-[240px] truncate text-sm font-bold">{product.name}</p>
-                          {product.featured && <span className="text-xs font-bold text-primary">En vedette</span>}
+                          <p className="max-w-[240px] truncate text-sm font-bold">
+                            {product.name}
+                          </p>
+                          {product.featured && (
+                            <span className="text-xs font-bold text-primary">
+                              En vedette
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">
-                      <span className="text-sm text-muted-foreground">{product.category?.name || '-'}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {product.category?.name || "-"}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-black">{formatPrice(product.price)}</span>
+                      <span className="text-sm font-black">
+                        {formatPrice(product.price)}
+                      </span>
                     </td>
                     <td className="hidden px-4 py-3 sm:table-cell">
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold',
-                          product.stock_status === 'in_stock'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-amber-200 bg-amber-50 text-amber-800'
+                          "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold",
+                          product.stock_status === "in_stock"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-amber-200 bg-amber-50 text-amber-800",
                         )}
                       >
-                        {product.stock_status === 'in_stock' ? `En stock (${product.quantity})` : 'Sur commande'}
+                        {product.stock_status === "in_stock"
+                          ? `En stock (${product.quantity})`
+                          : "Sur commande"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -176,7 +246,9 @@ export default function AdminProductsPage() {
                 <tr>
                   <td colSpan={5} className="px-4 py-12 text-center">
                     <Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Aucun produit trouvé.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Aucun produit trouvé.
+                    </p>
                   </td>
                 </tr>
               )}

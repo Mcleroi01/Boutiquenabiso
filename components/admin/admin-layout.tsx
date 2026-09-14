@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardList,
   ExternalLink,
+  FileText,
   FolderTree,
   LayoutDashboard,
   Loader2,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
+  { href: "/admin/devis", label: "Demandes de devis", icon: FileText },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
 ];
 
