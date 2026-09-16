@@ -41,24 +41,25 @@ export default function AdminProductsPage() {
   const handleSave = async (
     data: Omit<
       ProductWithCategory,
-      "id" | "created_at" | "updated_at" | "category"
+      "id" | "slug" | "created_at" | "updated_at" | "category"
     >,
     imageFiles: File[],
   ) => {
-    console.info("[product] début submit parent", {
+    console.info("PRODUCT DATA READY", {
       editing: Boolean(editingProduct),
       imageCount: imageFiles.length,
     });
-        let newlyCreatedProductId: string | null = null;
+    let newlyCreatedProductId: string | null = null;
     try {
-      console.info("[product] données produit préparées", data);
       let savedProduct: ProductWithCategory | null = null;
       if (editingProduct) {
         await updateProduct(editingProduct.id, data);
         savedProduct = { ...editingProduct, ...data };
       } else {
+        console.info("PRODUCT INSERT START", data);
         savedProduct = await createProduct(data);
-          newlyCreatedProductId = savedProduct?.id || null;
+        newlyCreatedProductId = savedProduct?.id || null;
+        console.info("PRODUCT INSERT SUCCESS", { id: newlyCreatedProductId });
       }
       if (!savedProduct)
         throw new Error("Supabase n’a pas retourné le produit créé.");
@@ -66,17 +67,20 @@ export default function AdminProductsPage() {
       const productId = savedProduct.id;
       const uploadedImages = await Promise.all(
         imageFiles.map(async (file) => {
-          console.info("[product] début upload image", {
+          console.info("IMAGE UPLOAD START", {
             name: file.name,
             size: file.size,
           });
           const path = `${productId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-          const url = await uploadPublicImage("product-images", file, path);
-          console.info("[product] upload image terminé", {
-            name: file.name,
-            path,
-          });
-          return url;
+          try {
+            const url = await uploadPublicImage("product-images", file, path);
+            console.info("IMAGE UPLOAD SUCCESS", { name: file.name, path });
+            return url;
+          } catch (error) {
+            throw new Error(
+              `Échec de l’upload de « ${file.name} » : ${error instanceof Error ? error.message : "erreur inconnue"}`,
+            );
+          }
         }),
       );
       const images = [...data.images, ...uploadedImages];
@@ -87,12 +91,19 @@ export default function AdminProductsPage() {
       if (uploadedImages.length || editingProduct)
         await updateProduct(productId, { images });
       if (images.length || editingProduct) {
-        console.info("[product] synchronisation product_images démarrée");
+        console.info("PRODUCT IMAGES INSERT START", {
+          productId,
+          imageCount: images.length,
+        });
         await syncProductImages(productId, images);
+        console.info("PRODUCT IMAGES INSERT SUCCESS", {
+          productId,
+          imageCount: images.length,
+        });
       } else {
-        console.info("[product] aucune image à synchroniser");
+        throw new Error("Aucune image n’a été uploadée pour ce produit.");
       }
-      console.info("[product] produit créé avec succès", { id: productId });
+      console.info("SUBMIT SUCCESS", { id: productId });
       setModalOpen(false);
       setEditingProduct(null);
       void loadData().catch((reloadError) => {
@@ -102,15 +113,18 @@ export default function AdminProductsPage() {
         );
       });
     } catch (saveError) {
-        if (newlyCreatedProductId) {
-          try {
-            await deleteProduct(newlyCreatedProductId);
-            console.warn('[product] produit partiel supprimé après échec', newlyCreatedProductId);
-          } catch (rollbackError) {
-            console.error('[product] échec du rollback produit', rollbackError);
-          }
+      console.error("SUBMIT ERROR", saveError);
+      if (newlyCreatedProductId) {
+        try {
+          await deleteProduct(newlyCreatedProductId);
+          console.warn(
+            "[product] produit partiel supprimé après échec",
+            newlyCreatedProductId,
+          );
+        } catch (rollbackError) {
+          console.error("[product] échec du rollback produit", rollbackError);
         }
-      console.error("[product] erreur complète création produit", saveError);
+      }
       throw saveError instanceof Error
         ? saveError
         : new Error("Erreur inconnue lors de la création du produit.");
@@ -230,7 +244,11 @@ export default function AdminProductsPage() {
                               En vedette
                             </span>
                           )}
-                          {product.images.length < 5 && <span className="mt-1 block text-xs font-bold text-amber-700">Attention : {product.images.length}/5 images</span>}
+                          {product.images.length < 5 && (
+                            <span className="mt-1 block text-xs font-bold text-amber-700">
+                              Attention : {product.images.length}/5 images
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>

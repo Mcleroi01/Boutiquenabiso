@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { Category, Product, ProductWithCategory, Order, Setting, OrderStatus, Quote, QuotePlatform, QuoteStatus } from './types';
+import { slugifyProductName } from './product-slug';
 
 export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
@@ -14,7 +15,7 @@ export async function getProducts(): Promise<ProductWithCategory[]> {
   let { data, error } = await supabase.from('public_catalog_products').select('*').order('created_at', { ascending: false });
   if (error?.code === 'PGRST205') {
     console.warn('[catalog] vue publique absente, lecture de compatibilité');
-    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').order('created_at', { ascending: false }));
+    ({ data, error } = await supabase.from('products').select('id,name,slug,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').order('created_at', { ascending: false }));
   }
   const { data: categories, error: categoryError } = await Promise.all([
     supabase.from('categories').select('*').order('name'),
@@ -39,14 +40,20 @@ export async function getAdminProducts(): Promise<ProductWithCategory[]> {
   return data ?? [];
 }
 
-export async function getProductById(id: string): Promise<ProductWithCategory | null> {
-  let { data, error } = await supabase.from('public_catalog_products').select('*').eq('id', id).maybeSingle();
+export async function getProductBySlug(slug: string): Promise<ProductWithCategory | null> {
+  let { data, error } = await supabase.from('public_catalog_products').select('*').eq('slug', slug).maybeSingle();
   if (error?.code === 'PGRST205') {
-    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('id', id).maybeSingle());
+    ({ data, error } = await supabase.from('products').select('id,name,slug,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('slug', slug).maybeSingle());
   }
   if (error) throw error;
   if (!data) return null;
   return { ...data, purchase_price: 0, selling_price: data.price, currency: data.currency || 'USD' } as ProductWithCategory;
+}
+
+export async function getProductById(id: string): Promise<ProductWithCategory | null> {
+  const { data, error } = await supabase.from('products').select('*, category:categories(*)').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data as ProductWithCategory | null;
 }
 
 export async function getFeaturedProducts(): Promise<ProductWithCategory[]> {
@@ -56,7 +63,7 @@ export async function getFeaturedProducts(): Promise<ProductWithCategory[]> {
     .eq('featured', true)
     .order('created_at', { ascending: false });
   if (error?.code === 'PGRST205') {
-    ({ data, error } = await supabase.from('products').select('id,name,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('featured', true).order('created_at', { ascending: false }));
+    ({ data, error } = await supabase.from('products').select('id,name,slug,description,price,category_id,stock_status,quantity,variants,images,featured,created_at,updated_at').eq('featured', true).order('created_at', { ascending: false }));
   }
   if (error) throw error;
   return (data ?? []).map((product) => ({ ...product, purchase_price: 0, selling_price: product.price, currency: product.currency || 'USD' })) as ProductWithCategory[];
@@ -261,14 +268,15 @@ function getStoragePath(bucket: string, publicUrl: string): string {
   return index >= 0 ? decodeURIComponent(publicUrl.slice(index + marker.length)) : publicUrl;
 }
 
-export async function createProduct(input: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product | null> {
+export async function createProduct(input: Omit<Product, 'id' | 'slug' | 'created_at' | 'updated_at'>): Promise<Product | null> {
+  const slug = await getUniqueProductSlug(input.name);
   console.info('[product] début insertion Supabase', {
     name: input.name,
     purchase_price: input.purchase_price,
     selling_price: input.selling_price,
     currency: input.currency,
   });
-  const { data, error } = await supabase.from('products').insert(input).select().single();
+  const { data, error } = await supabase.from('products').insert({ ...input, slug }).select().single();
   if (error) {
     console.error('[product] erreur Supabase insertion', error);
     throw new Error(error.message || 'Supabase a refusé la création du produit.');
@@ -279,12 +287,24 @@ export async function createProduct(input: Omit<Product, 'id' | 'created_at' | '
 
 export async function updateProduct(id: string, input: Partial<Product>): Promise<void> {
   console.info('[product] début mise à jour Supabase', { id });
-  const { error } = await supabase.from('products').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id);
+  const update = { ...input, ...(input.name ? { slug: await getUniqueProductSlug(input.name, id) } : {}), updated_at: new Date().toISOString() };
+  const { error } = await supabase.from('products').update(update).eq('id', id);
   if (error) {
     console.error('[product] erreur Supabase mise à jour', error);
     throw new Error(error.message || 'Supabase a refusé la mise à jour du produit.');
   }
   console.info('[product] mise à jour Supabase terminée', { id });
+}
+
+async function getUniqueProductSlug(name: string, excludeId?: string): Promise<string> {
+  const base = slugifyProductName(name);
+  const { data, error } = await supabase.from('products').select('id, slug').like('slug', `${base}%`);
+  if (error) throw error;
+  const used = new Set((data ?? []).filter((product) => product.id !== excludeId).map((product) => product.slug));
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
 }
 
 export async function deleteProduct(id: string): Promise<void> {

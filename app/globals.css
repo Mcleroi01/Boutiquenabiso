@@ -31,10 +31,12 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
   ::selection {
     @apply bg-accent text-accent-foreground;
   }
@@ -44,58 +46,112 @@
   .container-page {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .brand-surface {
     @apply border border-border/70 bg-white/90 shadow-sm shadow-slate-900/5 backdrop-blur;
   }
+
   .focus-ring {
     @apply outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/20;
   }
+
   .soft-grid {
     background-image:
       linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
       linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+
   .rich-editor:empty::before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
-  .rich-editor h2, .product-description h2 { @apply mt-4 text-xl font-black text-foreground; }
-  .rich-editor h3, .product-description h3 { @apply mt-3 text-lg font-bold text-foreground; }
-  .rich-editor p, .product-description p { @apply my-2; }
-  .rich-editor ul, .product-description ul { @apply my-2 list-disc pl-6; }
-  .rich-editor ol, .product-description ol { @apply my-2 list-decimal pl-6; }
-  .rich-editor a, .product-description a { @apply text-primary underline; }
+
+  .rich-editor h2,
+  .product-description h2 {
+    @apply mt-4 text-xl font-black text-foreground;
+  }
+
+  .rich-editor h3,
+  .product-description h3 {
+    @apply mt-3 text-lg font-bold text-foreground;
+  }
+
+  .rich-editor p,
+  .product-description p {
+    @apply my-2;
+  }
+
+  .rich-editor ul,
+  .product-description ul {
+    @apply my-2 list-disc pl-6;
+  }
+
+  .rich-editor ol,
+  .product-description ol {
+    @apply my-2 list-decimal pl-6;
+  }
+
+  .rich-editor a,
+  .product-description a {
+    @apply text-primary underline;
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
+
 .animate-scale-in {
   animation: scale-in 0.2s ease-out forwards;
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-slide-up {
   animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

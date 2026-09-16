@@ -29,6 +29,7 @@ export interface Category {
 export interface Product {
   id: string;
   name: string;
+  slug: string;
   description: string | null;
   price: number;
   purchase_price: number;
