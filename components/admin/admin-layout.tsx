@@ -12,6 +12,7 @@ import {
   Loader2,
   Package,
   Settings,
+  Activity,
 } from "lucide-react";
 import {
   DashboardShell,
@@ -27,6 +28,7 @@ const navItems: DashboardNavItem[] = [
   { href: "/admin/clients", label: "Clients", icon: Contact },
   { href: "/admin/devis", label: "Demandes de devis", icon: FileText },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
+  { href: "/admin/visiteurs", label: "Visiteurs", icon: Activity },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

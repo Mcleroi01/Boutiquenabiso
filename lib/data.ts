@@ -79,6 +79,64 @@ export async function getSettings(): Promise<Record<string, string>> {
   return map;
 }
 
+export type VisitorAnalytics = {
+  totalVisitors: number;
+  activeVisitors: number;
+  totalPageViews: number;
+  authenticatedVisitors: number;
+  topPages: { path: string; views: number }[];
+  recentVisitors: {
+    id: string;
+    user_id: string | null;
+    user_name: string | null;
+    user_email: string | null;
+    last_path: string;
+    page_views: number;
+    device_type: string;
+    last_seen_at: string;
+  }[];
+};
+
+export async function getVisitorAnalytics(): Promise<VisitorAnalytics> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [visitorsResult, viewsResult, profilesResult] = await Promise.all([
+    supabase
+      .from('site_visitors')
+      .select('id,user_id,last_path,page_views,device_type,last_seen_at')
+      .order('last_seen_at', { ascending: false }),
+    supabase
+      .from('site_page_views')
+      .select('path,user_id,viewed_at')
+      .gte('viewed_at', since),
+    supabase.from('profiles').select('id,full_name,email'),
+  ]);
+  if (visitorsResult.error) throw visitorsResult.error;
+  if (viewsResult.error) throw viewsResult.error;
+  if (profilesResult.error) throw profilesResult.error;
+
+  const visitors = visitorsResult.data ?? [];
+  const views = viewsResult.data ?? [];
+  const profiles = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
+  const pageCounts = new Map<string, number>();
+  for (const view of views) pageCounts.set(view.path, (pageCounts.get(view.path) || 0) + 1);
+
+  return {
+    totalVisitors: visitors.length,
+    activeVisitors: visitors.filter((visitor) => visitor.last_seen_at >= since).length,
+    totalPageViews: views.length,
+    authenticatedVisitors: new Set(visitors.filter((visitor) => visitor.user_id).map((visitor) => visitor.id)).size,
+    topPages: [...pageCounts.entries()]
+      .sort(([, first], [, second]) => second - first)
+      .slice(0, 8)
+      .map(([path, count]) => ({ path, views: count })),
+    recentVisitors: visitors.slice(0, 12).map((visitor) => ({
+      ...visitor,
+      user_name: profiles.get(visitor.user_id || '')?.full_name || null,
+      user_email: profiles.get(visitor.user_id || '')?.email || null,
+    })),
+  };
+}
+
 export async function getOrders(): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')
