@@ -44,7 +44,7 @@ export function ProductDetailClient({
   }
 
   return (
-    <div className="container-page py-6 md:py-10">
+    <div className="container-page min-w-0 py-6 md:py-10">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-2 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:text-foreground"
@@ -53,8 +53,8 @@ export function ProductDetailClient({
         Retour au catalogue
       </Link>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:gap-12">
-        <div className="space-y-4">
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] lg:gap-12">
+        <div className="min-w-0 space-y-4">
           <div className="brand-surface aspect-square overflow-hidden rounded-2xl">
             {images[selectedImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -68,7 +68,7 @@ export function ProductDetailClient({
           </div>
 
           {images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+            <div className="flex flex-wrap gap-3 pb-1">
               {images.map((img, index) => (
                 <button
                   key={img}
@@ -88,12 +88,12 @@ export function ProductDetailClient({
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="space-y-3">
             {product.category && (
               <span className="text-sm font-bold text-primary">{product.category.name}</span>
             )}
-            <h1 className="text-3xl font-black leading-tight tracking-tight md:text-4xl">
+            <h1 className="break-words text-3xl font-black leading-tight tracking-tight md:text-4xl">
               {product.name}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
@@ -125,7 +125,7 @@ export function ProductDetailClient({
 
           {product.description && (
             <div
-              className="product-description text-sm leading-relaxed text-muted-foreground"
+              className="product-description min-w-0 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere] [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
             />
           )}
@@ -140,10 +140,10 @@ export function ProductDetailClient({
               </div>
               {variants.map((variant) => (
                 <div key={variant.name} className="space-y-2">
-                  <label className="text-sm font-bold">
+                  <label className="block break-words text-sm font-bold">
                     {variant.name}
                     {!variantSelections[variant.name] && (
-                      <span className="ml-2 text-xs font-medium text-muted-foreground">
+                      <span className="ml-2 text-xs font-medium text-muted-foreground sm:whitespace-nowrap">
                         Choisissez une option
                       </span>
                     )}
@@ -230,7 +230,7 @@ export function ProductDetailClient({
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
+          <div className="grid grid-cols-1 gap-3 border-t border-border/60 pt-4 sm:grid-cols-3">
             {[
               { label: "Produits vérifiés", icon: Shield },
               { label: "Livraison Kinshasa", icon: Truck },

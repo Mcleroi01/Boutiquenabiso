@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Clock, MessageCircle, Package, Tag } from "lucide-react";
+import { CheckCircle2, Clock, Package, ShoppingBag, Tag } from "lucide-react";
 import { ProductWithCategory } from "@/lib/types";
-import {
-  buildOrderMessage,
-  buildWhatsAppLink,
-  formatPrice,
-} from "@/lib/whatsapp";
+import { formatPrice } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 
@@ -25,9 +21,7 @@ export function ProductCard({
       (variant) => variant.name && variant.options?.length,
     ) || [];
   const featuredVariants = variants.slice(0, 2);
-  const whatsappHref = whatsappNumber
-    ? buildWhatsAppLink(whatsappNumber, buildOrderMessage(product))
-    : undefined;
+  const orderHref = `/client/nouvelle-commande?product=${encodeURIComponent(product.id)}&quantity=1`;
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm shadow-slate-900/5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-slate-900/10">
@@ -120,24 +114,13 @@ export function ProductCard({
       </Link>
 
       <div className="mt-auto border-t border-border/60 p-3">
-        {whatsappHref ? (
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-2.5 text-xs font-bold text-white shadow-sm shadow-emerald-900/10 transition-all hover:bg-[#1fb45a] hover:shadow-md"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Commander sur WhatsApp
-          </a>
-        ) : (
-          <Link
-            href={`/produit/${product.slug || product.id}`}
-            className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90"
-          >
-            Voir le produit
-          </Link>
-        )}
+        <Link
+          href={orderHref}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          Commander
+        </Link>
       </div>
     </article>
   );
