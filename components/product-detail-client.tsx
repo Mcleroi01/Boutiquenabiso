@@ -28,12 +28,16 @@ export function ProductDetailClient({
 }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
+  const [variantSelections, setVariantSelections] = useState<
+    Record<string, string>
+  >({});
 
   const inStock = product.stock_status === "in_stock";
   const images = product.images?.length ? product.images : [];
   const variants: VariantGroup[] = product.variants || [];
-  const allVariantsSelected = variants.every((variant) => variantSelections[variant.name]);
+  const allVariantsSelected = variants.every(
+    (variant) => variantSelections[variant.name],
+  );
 
   const orderQuery = new URLSearchParams({
     product: product.id,
@@ -58,7 +62,11 @@ export function ProductDetailClient({
           <div className="brand-surface aspect-square overflow-hidden rounded-2xl">
             {images[selectedImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={images[selectedImage]} alt={product.name} className="h-full w-full object-cover" />
+              <img
+                src={images[selectedImage]}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground/50">
                 <Package className="h-10 w-10" />
@@ -81,7 +89,11 @@ export function ProductDetailClient({
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={img}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -91,7 +103,9 @@ export function ProductDetailClient({
         <div className="min-w-0 space-y-6">
           <div className="space-y-3">
             {product.category && (
-              <span className="text-sm font-bold text-primary">{product.category.name}</span>
+              <span className="text-sm font-bold text-primary">
+                {product.category.name}
+              </span>
             )}
             <h1 className="break-words text-3xl font-black leading-tight tracking-tight md:text-4xl">
               {product.name}
@@ -105,7 +119,11 @@ export function ProductDetailClient({
                     : "bg-amber-50 text-amber-800 ring-amber-200",
                 )}
               >
-                {inStock ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+                {inStock ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Clock className="h-3.5 w-3.5" />
+                )}
                 {inStock ? "En stock à Kinshasa" : "Sur commande"}
               </span>
               {inStock && product.quantity > 0 && (
@@ -120,13 +138,17 @@ export function ProductDetailClient({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-200">
               Prix boutique
             </p>
-            <div className="mt-2 text-4xl font-black tracking-tight">{formatPrice(product.price)}</div>
+            <div className="mt-2 text-4xl font-black tracking-tight">
+              {formatPrice(product.price)}
+            </div>
           </div>
 
           {product.description && (
             <div
               className="product-description min-w-0 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere] [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(product.description),
+              }}
             />
           )}
 
@@ -150,7 +172,8 @@ export function ProductDetailClient({
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {variant.options.map((option) => {
-                      const selected = variantSelections[variant.name] === option;
+                      const selected =
+                        variantSelections[variant.name] === option;
                       return (
                         <button
                           key={option}
@@ -181,13 +204,17 @@ export function ProductDetailClient({
             <label className="text-sm font-bold">Quantité</label>
             <div className="inline-flex items-center rounded-2xl border border-border bg-white shadow-sm">
               <button
-                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                onClick={() =>
+                  setQuantity((current) => Math.max(1, current - 1))
+                }
                 className="flex h-12 w-12 items-center justify-center rounded-l-2xl hover:bg-muted"
                 aria-label="Diminuer"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-14 text-center text-sm font-black">{quantity}</span>
+              <span className="w-14 text-center text-sm font-black">
+                {quantity}
+              </span>
               <button
                 onClick={() => setQuantity((current) => current + 1)}
                 className="flex h-12 w-12 items-center justify-center rounded-r-2xl hover:bg-muted"
@@ -241,7 +268,9 @@ export function ProductDetailClient({
                 className="brand-surface flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center"
               >
                 <item.icon className="h-5 w-5 text-primary" />
-                <span className="text-xs font-semibold text-muted-foreground">{item.label}</span>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {item.label}
+                </span>
               </div>
             ))}
           </div>

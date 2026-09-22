@@ -12,7 +12,7 @@ export function requestLocation(): Promise<Location> {
     }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy ?? null }),
-      (error) => reject(new Error(error.code === error.PERMISSION_DENIED ? 'Autorisation de position refusée. Vous pouvez continuer sans géolocalisation.' : 'Impossible de récupérer votre position.')),
+      (error) => reject(new Error(error.code === error.PERMISSION_DENIED ? 'Autorisation de position refusée.' : 'Impossible de récupérer votre position.')),
       { enableHighAccuracy: true, maximumAge: 5 * 60 * 1000, timeout: 10000 },
     );
   });

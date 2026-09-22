@@ -211,11 +211,24 @@ export async function signUpClient(input: {
   password: string;
   fullName: string;
   phone: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
 }) {
   const { data, error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
-    options: { data: { full_name: input.fullName, phone: input.phone } },
+    options: {
+      data: {
+        full_name: input.fullName,
+        phone: input.phone,
+        location_latitude: input.location.latitude,
+        location_longitude: input.location.longitude,
+        location_accuracy: input.location.accuracy ?? null,
+      },
+    },
   });
   if (error) throw error;
   return data;
