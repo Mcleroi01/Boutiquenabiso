@@ -1,17 +1,38 @@
-export type StockStatus = 'in_stock' | 'order';
+export type StockStatus = "in_stock" | "order";
 
 export type OrderStatus =
-  | 'new'
-  | 'confirmed'
-  | 'purchased'
-  | 'transit'
-  | 'arrived'
-  | 'delivered'
-  | 'cancelled';
+  | "pending"
+  | "confirmed"
+  | "payment_pending"
+  | "paid"
+  | "purchasing"
+  | "purchased"
+  | "shipping_to_agency"
+  | "arrived_at_agency"
+  | "in_transit"
+  | "arrived_in_kinshasa"
+  | "ready_for_delivery"
+  | "delivered"
+  | "cancelled";
 
-export type QuoteStatus = 'pending' | 'reviewing' | 'quoted' | 'accepted' | 'rejected' | 'converted';
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
 
-export type QuotePlatform = 'Pinduoduo' | 'Xianyu' | '1688' | 'Alibaba' | 'Shein' | 'Autre' | 'Non précisée';
+export type QuoteStatus =
+  | "pending"
+  | "reviewing"
+  | "quoted"
+  | "accepted"
+  | "rejected"
+  | "converted";
+
+export type QuotePlatform =
+  | "Pinduoduo"
+  | "Xianyu"
+  | "1688"
+  | "Alibaba"
+  | "Shein"
+  | "Autre"
+  | "Non précisée";
 
 export interface VariantGroup {
   name: string;
@@ -47,13 +68,30 @@ export interface Product {
 
 export interface Order {
   id: string;
+  order_number: string | null;
+  customer_id: string | null;
   customer_name: string;
   customer_phone: string;
   product_id: string | null;
   product_name: string;
+  variant_selection: Record<string, string>;
   quantity: number;
   price: number;
   status: OrderStatus;
+  payment_status: PaymentStatus;
+  shipping_cost: number;
+  total_estimated: number;
+  currency: string;
+  delivery_city: string | null;
+  customer_note: string | null;
+  admin_note: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  estimated_delivery: string | null;
+  delivery_latitude: number | null;
+  delivery_longitude: number | null;
+  delivery_accuracy: number | null;
+  delivery_location_updated_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -102,43 +140,55 @@ export interface ProductWithCategory extends Product {
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  new: 'Nouvelle commande',
-  confirmed: 'Confirmée',
-  purchased: 'Achetée en Chine',
-  transit: 'En transit',
-  arrived: 'Arrivée à Kinshasa',
-  delivered: 'Livrée',
-  cancelled: 'Annulée',
+  pending: "Commande reçue",
+  confirmed: "Confirmée",
+  payment_pending: "Paiement en attente",
+  paid: "Paiement confirmé",
+  purchasing: "Achat en Chine",
+  purchased: "Achetée en Chine",
+  shipping_to_agency: "En route vers l'agence",
+  arrived_at_agency: "Arrivée à l'agence",
+  in_transit: "En transport vers Kinshasa",
+  arrived_in_kinshasa: "Arrivée à Kinshasa",
+  ready_for_delivery: "Prête pour livraison",
+  delivered: "Livrée",
+  cancelled: "Annulée",
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  new: 'bg-blue-100 text-blue-700 border-blue-200',
-  confirmed: 'bg-amber-100 text-amber-700 border-amber-200',
-  purchased: 'bg-purple-100 text-purple-700 border-purple-200',
-  transit: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  arrived: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  delivered: 'bg-green-100 text-green-700 border-green-200',
-  cancelled: 'bg-red-100 text-red-700 border-red-200',
+  pending: "bg-blue-100 text-blue-700 border-blue-200",
+  confirmed: "bg-amber-100 text-amber-700 border-amber-200",
+  payment_pending: "bg-orange-100 text-orange-700 border-orange-200",
+  paid: "bg-green-100 text-green-700 border-green-200",
+  purchasing: "bg-violet-100 text-violet-700 border-violet-200",
+  purchased: "bg-purple-100 text-purple-700 border-purple-200",
+  shipping_to_agency: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  arrived_at_agency: "bg-teal-100 text-teal-700 border-teal-200",
+  in_transit: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  arrived_in_kinshasa: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  ready_for_delivery: "bg-lime-100 text-lime-700 border-lime-200",
+  delivered: "bg-green-100 text-green-700 border-green-200",
+  cancelled: "bg-red-100 text-red-700 border-red-200",
 };
 
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
-  pending: 'En attente',
-  reviewing: 'En analyse',
-  quoted: 'Devis envoyé',
-  accepted: 'Accepté',
-  rejected: 'Refusé',
-  converted: 'Converti en commande',
+  pending: "En attente",
+  reviewing: "En analyse",
+  quoted: "Devis envoyé",
+  accepted: "Accepté",
+  rejected: "Refusé",
+  converted: "Converti en commande",
 };
 
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
-  pending: 'bg-amber-100 text-amber-700 border-amber-200',
-  reviewing: 'bg-blue-100 text-blue-700 border-blue-200',
-  quoted: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  accepted: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
-  converted: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  pending: "bg-amber-100 text-amber-700 border-amber-200",
+  reviewing: "bg-blue-100 text-blue-700 border-blue-200",
+  quoted: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  accepted: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  rejected: "bg-red-100 text-red-700 border-red-200",
+  converted: "bg-indigo-100 text-indigo-700 border-indigo-200",
 };
 
 export const QUOTE_STATUSES = Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[];

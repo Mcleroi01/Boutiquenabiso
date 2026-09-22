@@ -12,40 +12,36 @@ import {
   Package,
   Plus,
   Shield,
+  ShoppingBag,
   Truck,
 } from "lucide-react";
 import { ProductWithCategory, VariantGroup } from "@/lib/types";
-import {
-  buildOrderMessage,
-  buildWhatsAppLink,
-  formatPrice,
-} from "@/lib/whatsapp";
+import { formatPrice } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export function ProductDetailClient({
   product,
-  whatsappNumber,
 }: {
   product: ProductWithCategory;
   whatsappNumber: string;
 }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [variantSelections, setVariantSelections] = useState<
-    Record<string, string>
-  >({});
+  const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
 
   const inStock = product.stock_status === "in_stock";
   const images = product.images?.length ? product.images : [];
   const variants: VariantGroup[] = product.variants || [];
-  const allVariantsSelected = variants.every((v) => variantSelections[v.name]);
+  const allVariantsSelected = variants.every((variant) => variantSelections[variant.name]);
 
-  const handleOrder = () => {
-    if (!allVariantsSelected || !whatsappNumber) return;
-    const message = buildOrderMessage(product, variantSelections, quantity);
-    window.open(buildWhatsAppLink(whatsappNumber, message), "_blank");
-  };
+  const orderQuery = new URLSearchParams({
+    product: product.id,
+    quantity: String(quantity),
+  });
+  if (allVariantsSelected) {
+    orderQuery.set("variants", JSON.stringify(variantSelections));
+  }
 
   return (
     <div className="container-page py-6 md:py-10">
@@ -57,16 +53,12 @@ export function ProductDetailClient({
         Retour au catalogue
       </Link>
 
-      <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
+      <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr] lg:gap-12">
         <div className="space-y-4">
           <div className="brand-surface aspect-square overflow-hidden rounded-2xl">
             {images[selectedImage] ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={images[selectedImage]}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
+              <img src={images[selectedImage]} alt={product.name} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground/50">
                 <Package className="h-10 w-10" />
@@ -74,25 +66,22 @@ export function ProductDetailClient({
               </div>
             )}
           </div>
+
           {images.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-              {images.map((img, i) => (
+              {images.map((img, index) => (
                 <button
-                  key={i}
-                  onClick={() => setSelectedImage(i)}
+                  key={img}
+                  onClick={() => setSelectedImage(index)}
                   className={cn(
                     "relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 bg-white transition-all",
-                    selectedImage === i
+                    selectedImage === index
                       ? "border-primary shadow-md"
                       : "border-border hover:border-primary/40",
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={img} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -102,9 +91,7 @@ export function ProductDetailClient({
         <div className="space-y-6">
           <div className="space-y-3">
             {product.category && (
-              <span className="text-sm font-bold text-primary">
-                {product.category.name}
-              </span>
+              <span className="text-sm font-bold text-primary">{product.category.name}</span>
             )}
             <h1 className="text-3xl font-black leading-tight tracking-tight md:text-4xl">
               {product.name}
@@ -118,11 +105,7 @@ export function ProductDetailClient({
                     : "bg-amber-50 text-amber-800 ring-amber-200",
                 )}
               >
-                {inStock ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Clock className="h-3.5 w-3.5" />
-                )}
+                {inStock ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
                 {inStock ? "En stock à Kinshasa" : "Sur commande"}
               </span>
               {inStock && product.quantity > 0 && (
@@ -137,17 +120,13 @@ export function ProductDetailClient({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-200">
               Prix boutique
             </p>
-            <div className="mt-2 text-4xl font-black tracking-tight">
-              {formatPrice(product.price)}
-            </div>
+            <div className="mt-2 text-4xl font-black tracking-tight">{formatPrice(product.price)}</div>
           </div>
 
           {product.description && (
             <div
               className="product-description text-sm leading-relaxed text-muted-foreground"
-              dangerouslySetInnerHTML={{
-                __html: sanitizeHtml(product.description),
-              }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
             />
           )}
 
@@ -156,7 +135,7 @@ export function ProductDetailClient({
               <div>
                 <h2 className="text-base font-bold">Variantes disponibles</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Choisissez les options nécessaires avant la commande.
+                  Choisissez les options nécessaires avant de commander.
                 </p>
               </div>
               {variants.map((variant) => (
@@ -171,14 +150,13 @@ export function ProductDetailClient({
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {variant.options.map((option) => {
-                      const selected =
-                        variantSelections[variant.name] === option;
+                      const selected = variantSelections[variant.name] === option;
                       return (
                         <button
                           key={option}
                           onClick={() =>
-                            setVariantSelections((prev) => ({
-                              ...prev,
+                            setVariantSelections((current) => ({
+                              ...current,
                               [variant.name]: option,
                             }))
                           }
@@ -203,17 +181,15 @@ export function ProductDetailClient({
             <label className="text-sm font-bold">Quantité</label>
             <div className="inline-flex items-center rounded-2xl border border-border bg-white shadow-sm">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
                 className="flex h-12 w-12 items-center justify-center rounded-l-2xl hover:bg-muted"
                 aria-label="Diminuer"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-14 text-center text-sm font-black">
-                {quantity}
-              </span>
+              <span className="w-14 text-center text-sm font-black">{quantity}</span>
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((current) => current + 1)}
                 className="flex h-12 w-12 items-center justify-center rounded-r-2xl hover:bg-muted"
                 aria-label="Augmenter"
               >
@@ -222,44 +198,50 @@ export function ProductDetailClient({
             </div>
           </div>
 
-          <div>
-            <button
-              onClick={handleOrder}
-              disabled={!allVariantsSelected || !whatsappNumber}
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] px-6 py-4 text-base font-black text-white shadow-lg shadow-emerald-900/10 transition-all hover:-translate-y-0.5 hover:bg-[#1fb45a] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <MessageCircle className="h-5 w-5" />
-              Commander sur WhatsApp
-            </button>
+          <div className="space-y-3">
+            {allVariantsSelected ? (
+              <Link
+                href={`/client/nouvelle-commande?${orderQuery.toString()}`}
+                className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 text-base font-black text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Commander
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-2xl bg-primary px-6 py-4 text-base font-black text-primary-foreground opacity-50"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Commander
+              </button>
+            )}
             {!allVariantsSelected && variants.length > 0 && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 Sélectionnez toutes les variantes pour commander.
               </p>
             )}
+            <Link
+              href="/devis"
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl border border-primary px-6 py-4 text-base font-black text-primary transition-colors hover:bg-primary/5"
+            >
+              <FileText className="h-5 w-5" />
+              Demander un devis
+            </Link>
           </div>
-
-          <Link
-            href="/devis"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl border border-primary px-6 py-4 text-base font-black text-primary transition-colors hover:bg-primary/5"
-          >
-            <FileText className="h-5 w-5" />
-            Demander un devis
-          </Link>
 
           <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-4">
             {[
               { label: "Produits vérifiés", icon: Shield },
               { label: "Livraison Kinshasa", icon: Truck },
-              { label: "WhatsApp direct", icon: MessageCircle },
+              { label: "Confirmation WhatsApp", icon: MessageCircle },
             ].map((item) => (
               <div
                 key={item.label}
                 className="brand-surface flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center"
               >
                 <item.icon className="h-5 w-5 text-primary" />
-                <span className="text-xs font-semibold text-muted-foreground">
-                  {item.label}
-                </span>
+                <span className="text-xs font-semibold text-muted-foreground">{item.label}</span>
               </div>
             ))}
           </div>

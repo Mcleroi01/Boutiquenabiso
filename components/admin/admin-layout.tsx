@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardList,
+  Contact,
   ExternalLink,
   FileText,
   FolderTree,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/admin/produits", label: "Produits", icon: Package },
   { href: "/admin/categories", label: "Catégories", icon: FolderTree },
   { href: "/admin/commandes", label: "Commandes", icon: ClipboardList },
+  { href: "/admin/clients", label: "Clients", icon: Contact },
   { href: "/admin/devis", label: "Demandes de devis", icon: FileText },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
 ];
@@ -34,12 +36,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && pathname !== "/admin/login" && (!user || !isAdmin)) {
-      router.replace("/login?error=not-admin");
+    if (loading) return;
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    if (!isAdmin) {
+      router.replace("/client/mon-compte");
     }
   }, [user, isAdmin, loading, pathname, router]);
-
-  if (pathname === "/admin/login") return <>{children}</>;
 
   if (loading) {
     return (

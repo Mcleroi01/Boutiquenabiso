@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { ProductDetailClient } from "@/components/product-detail-client";
 import { getProductById, getProductBySlug, getSettings } from "@/lib/data";
 
 export const revalidate = 60;
 
-const siteUrl = (
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-).replace(/\/$/, "");
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 const defaultImage = `${siteUrl}/images/product-placeholder.svg`;
 
 function metadataDescription(description: string | null, name: string): string {
@@ -25,9 +23,7 @@ async function resolveProduct(slug: string) {
   if (product) return product;
 
   // Keep old UUID links usable while every new link uses the slug.
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    slug,
-  )
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug)
     ? getProductById(slug)
     : null;
 }
@@ -76,7 +72,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex-1">
         <ProductDetailClient

@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { FileText, Home, Menu, ShoppingBag, X } from 'lucide-react';
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { FileText, Home, Menu, ShoppingBag, UserCircle, X } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: '/', label: 'Catalogue', icon: Home },
-  { href: '/devis', label: 'Demander un devis', icon: FileText },
+  { href: "/", label: "Catalogue", icon: Home },
+  { href: "/devis", label: "Demander un devis", icon: FileText },
+  { href: "/client/mon-compte", label: "Mon compte", icon: UserCircle },
 ];
 
 export function SiteHeader() {
@@ -23,8 +24,12 @@ export function SiteHeader() {
             <ShoppingBag className="h-5 w-5" />
           </div>
           <div className="flex min-w-0 flex-col leading-none">
-            <span className="truncate text-base font-black tracking-tight">BOUTIQUE NA BISO</span>
-            <span className="mt-1 truncate text-[11px] font-medium text-muted-foreground">Chine - Kinshasa</span>
+            <span className="truncate text-base font-black tracking-tight">
+              BOUTIQUE NA BISO
+            </span>
+            <span className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+              Chine - Kinshasa
+            </span>
           </div>
         </Link>
 
@@ -36,10 +41,10 @@ export function SiteHeader() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all',
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all",
                   active
-                    ? 'bg-white text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-white/70 hover:text-foreground'
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -54,7 +59,11 @@ export function SiteHeader() {
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Menu"
         >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
         </button>
       </div>
 
@@ -69,10 +78,10 @@ export function SiteHeader() {
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    'flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold transition-colors',
+                    "flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold transition-colors",
                     active
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <link.icon className="h-4 w-4" />

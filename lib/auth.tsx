@@ -2,70 +2,86 @@
 
 import {
   createContext,
+  ReactNode,
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
+export type AppRole = "admin" | "client";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  role: AppRole | null;
   isAdmin: boolean;
   loading: boolean;
   authError: string | null;
   signIn: (
     email: string,
     password: string,
-  ) => Promise<{ error: string | null }>;
+  ) => Promise<{ error: string | null; role: AppRole | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
+  role: null,
   isAdmin: false,
   loading: true,
   authError: null,
-  signIn: async () => ({ error: null }),
+  signIn: async () => ({ error: null, role: null }),
   signOut: async () => {},
 });
+
+async function getUserRole(userId: string): Promise<AppRole> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role, disabled_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (data?.disabled_at) throw new Error("Ce compte est désactivé.");
+  return data?.role === "admin" ? "admin" : "client";
+}
+
+export function roleHome(role: AppRole | null) {
+  return role === "admin" ? "/admin" : "/client/mon-compte";
+}
+
+export function safeNextForRole(next: string | null, role: AppRole | null) {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return roleHome(role);
+  }
+
+  if (role === "admin" && next.startsWith("/admin")) return next;
+  if (role === "client" && next.startsWith("/client")) return next;
+  return roleHome(role);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  const updateAuthState = (nextSession: Session | null) => {
+  const applySession = async (nextSession: Session | null) => {
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
-  };
 
-  const resolveAdminRole = async (nextSession: Session | null) => {
     if (!nextSession?.user) {
-      setIsAdmin(false);
-      return false;
+      setRole(null);
+      return null;
     }
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", nextSession.user.id)
-      .maybeSingle();
-
-    if (error) {
-      setAuthError(error.message);
-      setIsAdmin(false);
-      return false;
-    }
-
-    const admin = data?.role === "admin";
-    setIsAdmin(admin);
-    return admin;
+    const nextRole = await getUserRole(nextSession.user.id);
+    setRole(nextRole);
+    return nextRole;
   };
 
   useEffect(() => {
@@ -75,21 +91,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getSession()
       .then(async ({ data: { session }, error }) => {
         if (!mounted) return;
-
-        if (error) {
-          setAuthError(error.message);
+        if (error) setAuthError(error.message);
+        try {
+          await applySession(session);
+          setAuthError(null);
+        } catch (caught) {
+          setAuthError(
+            caught instanceof Error
+              ? caught.message
+              : "Impossible de charger le rôle utilisateur.",
+          );
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setRole(null);
+        } finally {
+          setLoading(false);
         }
-
-        updateAuthState(session);
-        await resolveAdminRole(session);
-        setLoading(false);
       })
-      .catch((error: unknown) => {
+      .catch((caught: unknown) => {
         if (!mounted) return;
-
         setAuthError(
-          error instanceof Error
-            ? error.message
+          caught instanceof Error
+            ? caught.message
             : "Impossible d'initialiser la connexion.",
         );
         setLoading(false);
@@ -97,10 +121,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        updateAuthState(session);
-        setAuthError(null);
-        await resolveAdminRole(session);
-        setLoading(false);
+        try {
+          await applySession(session);
+          setAuthError(null);
+        } catch (caught) {
+          setAuthError(
+            caught instanceof Error
+              ? caught.message
+              : "Impossible de charger le rôle utilisateur.",
+          );
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setRole(null);
+        } finally {
+          setLoading(false);
+        }
       },
     );
 
@@ -117,32 +153,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
 
-      if (error) return { error: error.message };
-      if (!data.user || !(await resolveAdminRole(data.session))) {
+      if (error) return { error: error.message, role: null };
+      if (!data.session?.user) {
         await supabase.auth.signOut();
-        return { error: "Ce compte ne possède pas les droits administrateur." };
+        return { error: "Compte utilisateur introuvable.", role: null };
       }
 
-      updateAuthState(data.session);
+      const nextRole = await applySession(data.session);
       setAuthError(null);
-      return { error: null };
-    } catch (error) {
+      return { error: null, role: nextRole };
+    } catch (caught) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setRole(null);
       return {
         error:
-          error instanceof Error
-            ? error.message
+          caught instanceof Error
+            ? caught.message
             : "Impossible de se connecter à Supabase.",
+        role: null,
       };
     }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setRole(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, session, isAdmin, loading, authError, signIn, signOut }}
+      value={{
+        user,
+        session,
+        role,
+        isAdmin: role === "admin",
+        loading,
+        authError,
+        signIn,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -151,4 +204,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   return useContext(AuthContext);
+}
+
+export async function signUpClient(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+}) {
+  const { data, error } = await supabase.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: { data: { full_name: input.fullName, phone: input.phone } },
+  });
+  if (error) throw error;
+  return data;
 }

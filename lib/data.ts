@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Category, Product, ProductWithCategory, Order, Setting, OrderStatus, Quote, QuotePlatform, QuoteStatus } from './types';
+import { Category, Product, ProductWithCategory, Order, Setting, OrderStatus, Quote, QuotePlatform, QuoteStatus, PaymentStatus } from './types';
 import { slugifyProductName } from './product-slug';
 
 export async function getCategories(): Promise<Category[]> {
@@ -107,10 +107,120 @@ export async function createOrder(input: {
   return data;
 }
 
+export async function createClientOrder(input: {
+  product_id?: string | null;
+  product_name: string;
+  quantity: number;
+  price: number;
+  shipping_cost?: number;
+  currency?: string;
+  delivery_city: string;
+  customer_phone: string;
+  customer_note?: string | null;
+  variant_selection?: Record<string, string>;
+  delivery_latitude?: number | null;
+  delivery_longitude?: number | null;
+  delivery_accuracy?: number | null;
+}): Promise<Order> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('Connexion client requise.');
+  const shippingCost = input.shipping_cost || 0;
+  const { data, error } = await supabase.from('orders').insert({
+    customer_id: userData.user.id,
+    order_number: await nextOrderNumber(),
+    product_id: input.product_id || null,
+    product_name: input.product_name,
+    customer_name: userData.user.user_metadata?.full_name || userData.user.email || 'Client',
+    customer_phone: input.customer_phone,
+    quantity: input.quantity,
+    price: input.price,
+    shipping_cost: shippingCost,
+    total_estimated: input.price * input.quantity + shippingCost,
+    currency: input.currency || 'USD',
+    delivery_city: input.delivery_city,
+    customer_note: input.customer_note || null,
+    variant_selection: input.variant_selection || {},
+    delivery_latitude: input.delivery_latitude ?? null,
+    delivery_longitude: input.delivery_longitude ?? null,
+    delivery_accuracy: input.delivery_accuracy ?? null,
+    delivery_location_updated_at: input.delivery_latitude != null ? new Date().toISOString() : null,
+    status: 'pending',
+    payment_status: 'unpaid',
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function nextOrderNumber(): Promise<string> {
+  const { data, error } = await supabase.rpc('next_order_number');
+  if (error) throw error;
+  return data as string;
+}
+
+export async function getClientOrders(): Promise<Order[]> {
+  const { data, error } = await supabase.from('orders').select('*').eq('customer_id', (await supabase.auth.getUser()).data.user?.id || '').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getClientProfile() {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) throw new Error('Connexion client requise.');
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
+  if (error) throw error;
+  return { ...data, email: authData.user.email || '' };
+}
+
+export async function updateClientProfile(input: { full_name: string; phone: string; city?: string; address?: string; neighborhood?: string }) {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) throw new Error('Connexion client requise.');
+  const { error } = await supabase.from('profiles').update(input).eq('id', authData.user.id);
+  if (error) throw error;
+}
+
+export async function updateClientLocation(location: { latitude: number; longitude: number; accuracy?: number | null }) {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) throw new Error('Connexion client requise.');
+  const { error } = await supabase.from('profiles').update({ location_latitude: location.latitude, location_longitude: location.longitude, location_accuracy: location.accuracy ?? null, location_updated_at: new Date().toISOString() }).eq('id', authData.user.id);
+  if (error) throw error;
+}
+
+export async function getClientOrderHistory(orderId: string) {
+  const { data, error } = await supabase.from('order_status_history').select('id,order_id,status,comment,created_at').eq('order_id', orderId).order('created_at');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getClientOrderByNumber(orderNumber: string) {
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) throw new Error('Connexion client requise.');
+  const { data, error } = await supabase.from('orders').select('*').eq('order_number', orderNumber).eq('customer_id', authData.user.id).maybeSingle();
+  if (error) throw error;
+  return data as Order | null;
+}
+
+export async function getClientNotifications() {
+  const { data: authData } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from('notifications').select('*').eq('user_id', authData.user?.id || '').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getAdminClients() {
+  const { data, error } = await supabase.from('profiles').select('*').eq('role', 'user').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function updateOrderStatus(id: string, status: OrderStatus, notes?: string): Promise<void> {
   const update: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (notes !== undefined) update.notes = notes;
   const { error } = await supabase.from('orders').update(update).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateOrderDetails(id: string, input: { status?: OrderStatus; tracking_number?: string | null; carrier?: string | null; estimated_delivery?: string | null; shipping_cost?: number; payment_status?: PaymentStatus; admin_note?: string | null }): Promise<void> {
+  const { error } = await supabase.from('orders').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) throw error;
 }
 
