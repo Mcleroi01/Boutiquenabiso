@@ -57,7 +57,7 @@
   }
 
   .brand-surface {
-    @apply border border-border/70 bg-white/90 shadow-sm shadow-slate-900/5 backdrop-blur;
+    @apply border border-border/70 bg-card shadow-md shadow-slate-900/10;
   }
 
   .focus-ring {

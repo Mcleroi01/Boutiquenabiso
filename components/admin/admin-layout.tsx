@@ -13,7 +13,10 @@ import {
   Package,
   Settings,
 } from "lucide-react";
-import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
+import {
+  DashboardShell,
+  type DashboardNavItem,
+} from "@/components/dashboard-shell";
 import { useAuth } from "@/lib/auth";
 
 const navItems: DashboardNavItem[] = [
@@ -47,7 +50,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="brand-surface flex items-center gap-3 rounded-2xl px-5 py-4 text-sm font-bold text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          Chargement de l'administration...
+          Chargement de l&apos;administration...
         </div>
       </div>
     );

@@ -51,26 +51,23 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-                Connexion unique
+                Espace sécurisé
               </p>
               <h1 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">
-                Un seul accès pour clients et admins
+                Bienvenue chez Boutique Na Biso
               </h1>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
-                Connectez-vous avec votre email. L'application ouvre automatiquement l'espace adapté à votre rôle.
+                Connectez-vous pour gérer vos commandes et accéder à votre espace personnel.
               </p>
             </div>
           </div>
 
           <form
             onSubmit={submit}
-            className="brand-surface space-y-5 rounded-2xl p-6 md:p-8"
+            className="brand-surface space-y-5 rounded-2xl p-6 shadow-md md:p-8"
           >
             <div>
               <h2 className="text-xl font-black">Se connecter</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Commandes client ou administration boutique.
-              </p>
             </div>
 
             <label className="block space-y-2 text-sm font-bold">

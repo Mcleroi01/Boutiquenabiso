@@ -26,6 +26,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+const MAX_SESSION_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_STARTED_AT_KEY = "bnb_session_started_at";
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
@@ -87,12 +90,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    const hasExpiredLocalSession = (nextSession: Session | null) => {
+      if (!nextSession?.user || typeof window === "undefined") return false;
+      const storedStartedAt = window.localStorage.getItem(SESSION_STARTED_AT_KEY);
+      if (!storedStartedAt) {
+        window.localStorage.setItem(
+          SESSION_STARTED_AT_KEY,
+          String(Date.now()),
+        );
+        return false;
+      }
+      return Date.now() - Number(storedStartedAt) > MAX_SESSION_AGE_MS;
+    };
+
     supabase.auth
       .getSession()
       .then(async ({ data: { session }, error }) => {
         if (!mounted) return;
         if (error) setAuthError(error.message);
         try {
+          if (hasExpiredLocalSession(session)) {
+            await supabase.auth.signOut();
+            await applySession(null);
+            window.localStorage.removeItem(SESSION_STARTED_AT_KEY);
+            setAuthError("Votre session a expiré. Veuillez vous reconnecter.");
+            return;
+          }
           await applySession(session);
           setAuthError(null);
         } catch (caught) {
@@ -160,6 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const nextRole = await applySession(data.session);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(SESSION_STARTED_AT_KEY, String(Date.now()));
+      }
       setAuthError(null);
       return { error: null, role: nextRole };
     } catch (caught) {
@@ -179,6 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(SESSION_STARTED_AT_KEY);
+    }
     setSession(null);
     setUser(null);
     setRole(null);

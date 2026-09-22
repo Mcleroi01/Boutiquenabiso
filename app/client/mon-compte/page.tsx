@@ -11,11 +11,7 @@ import {
 } from "lucide-react";
 import { ClientShell } from "@/components/client/client-shell";
 import { getClientNotifications, getClientOrders } from "@/lib/data";
-import {
-  Order,
-  ORDER_STATUS_COLORS,
-  ORDER_STATUS_LABELS,
-} from "@/lib/types";
+import { Order, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/types";
 import { formatPrice } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 

@@ -99,7 +99,7 @@ export default function ClientRegistrationPage() {
 
           <form
             onSubmit={submit}
-            className="brand-surface min-w-0 space-y-5 rounded-2xl p-6 md:p-8"
+            className="brand-surface min-w-0 space-y-5 rounded-2xl p-6 shadow-md md:p-8"
           >
             <div className="space-y-5">
               <label className="block space-y-2 text-sm font-bold">

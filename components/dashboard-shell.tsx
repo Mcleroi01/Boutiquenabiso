@@ -25,11 +25,17 @@ export function DashboardShell({
   navItems: DashboardNavItem[];
   areaLabel: string;
   mobileLabel: string;
-  onSignOut: () => void;
+  onSignOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
+  const handleSignOut = async () => {
+    await onSignOut();
+    window.location.assign(`/login?next=${encodeURIComponent(pathname)}`);
+  };
   const isActive = (item: DashboardNavItem) =>
-    item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    item.exact
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#fffaf0_0%,#ffffff_42%,#eef8f5_100%)]">
@@ -74,7 +80,7 @@ export function DashboardShell({
             Voir le catalogue
           </Link>
           <button
-            onClick={onSignOut}
+            onClick={handleSignOut}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-destructive/5 hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
@@ -92,7 +98,7 @@ export function DashboardShell({
             <span className="text-sm font-black">{mobileLabel}</span>
           </div>
           <button
-            onClick={onSignOut}
+            onClick={handleSignOut}
             className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground"
             aria-label="Déconnexion"
           >

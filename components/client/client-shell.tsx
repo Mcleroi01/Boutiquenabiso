@@ -10,12 +10,23 @@ import {
   Loader2,
   UserCircle,
 } from "lucide-react";
-import { DashboardShell, type DashboardNavItem } from "@/components/dashboard-shell";
+import {
+  DashboardShell,
+  type DashboardNavItem,
+} from "@/components/dashboard-shell";
 import { useAuth } from "@/lib/auth";
 
 const navItems: DashboardNavItem[] = [
-  { href: "/client/mon-compte", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/client/mes-informations", label: "Mes informations", icon: UserCircle },
+  {
+    href: "/client/mon-compte",
+    label: "Tableau de bord",
+    icon: LayoutDashboard,
+  },
+  {
+    href: "/client/mes-informations",
+    label: "Mes informations",
+    icon: UserCircle,
+  },
   { href: "/client/mes-commandes", label: "Commandes", icon: ClipboardList },
   { href: "/client/mes-demandes", label: "Demandes", icon: FileText },
 ];
