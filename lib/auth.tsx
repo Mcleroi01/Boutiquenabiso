@@ -92,12 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const hasExpiredLocalSession = (nextSession: Session | null) => {
       if (!nextSession?.user || typeof window === "undefined") return false;
-      const storedStartedAt = window.localStorage.getItem(SESSION_STARTED_AT_KEY);
+      const storedStartedAt = window.localStorage.getItem(
+        SESSION_STARTED_AT_KEY,
+      );
       if (!storedStartedAt) {
-        window.localStorage.setItem(
-          SESSION_STARTED_AT_KEY,
-          String(Date.now()),
-        );
+        window.localStorage.setItem(SESSION_STARTED_AT_KEY, String(Date.now()));
         return false;
       }
       return Date.now() - Number(storedStartedAt) > MAX_SESSION_AGE_MS;

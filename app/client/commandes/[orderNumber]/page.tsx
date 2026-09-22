@@ -64,7 +64,9 @@ export default function OrderTrackingPage({
       })
       .catch((caught) =>
         setError(
-          caught instanceof Error ? caught.message : "Impossible de charger le suivi.",
+          caught instanceof Error
+            ? caught.message
+            : "Impossible de charger le suivi.",
         ),
       );
   }, [params.orderNumber]);
@@ -100,7 +102,9 @@ function TrackingContent({
   order: Order;
   history: OrderHistory[];
 }) {
-  const currentIndex = trackingSteps.findIndex((step) => step.status === order.status);
+  const currentIndex = trackingSteps.findIndex(
+    (step) => step.status === order.status,
+  );
   const isCancelled = order.status === "cancelled";
   const historyByStatus = useMemo(
     () => new Map(history.map((entry) => [entry.status, entry])),
@@ -108,7 +112,10 @@ function TrackingContent({
   );
   const progress = isCancelled
     ? 0
-    : Math.max(0, Math.round(((currentIndex + 1) / trackingSteps.length) * 100));
+    : Math.max(
+        0,
+        Math.round(((currentIndex + 1) / trackingSteps.length) * 100),
+      );
 
   return (
     <ClientShell>
@@ -142,9 +149,12 @@ function TrackingContent({
                 <Package className="h-7 w-7" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-base font-black">{order.product_name}</p>
+                <p className="truncate text-base font-black">
+                  {order.product_name}
+                </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Quantité : {order.quantity} · {formatPrice(order.price * order.quantity)}
+                  Quantité : {order.quantity} ·{" "}
+                  {formatPrice(order.price * order.quantity)}
                 </p>
               </div>
             </div>
@@ -152,7 +162,9 @@ function TrackingContent({
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Progression
               </p>
-              <p className="mt-1 text-2xl font-black text-primary">{progress}%</p>
+              <p className="mt-1 text-2xl font-black text-primary">
+                {progress}%
+              </p>
             </div>
           </div>
           <div className="mt-6 h-2 overflow-hidden rounded-full bg-muted">
@@ -203,11 +215,18 @@ function TrackingContent({
                           current && "ring-4 ring-primary/15",
                         )}
                       >
-                        <Icon className={cn("h-4 w-4", current && "animate-pulse")} />
+                        <Icon
+                          className={cn("h-4 w-4", current && "animate-pulse")}
+                        />
                       </div>
                       <div className="min-w-0 flex-1 pt-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className={cn("text-sm font-bold", !done && "text-muted-foreground")}>
+                          <p
+                            className={cn(
+                              "text-sm font-bold",
+                              !done && "text-muted-foreground",
+                            )}
+                          >
                             {ORDER_STATUS_LABELS[status]}
                           </p>
                           {current && (
@@ -219,7 +238,9 @@ function TrackingContent({
                         {entry ? (
                           <>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {new Date(entry.created_at).toLocaleString("fr-FR")}
+                              {new Date(entry.created_at).toLocaleString(
+                                "fr-FR",
+                              )}
                             </p>
                             {entry.comment && (
                               <p className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
@@ -244,10 +265,26 @@ function TrackingContent({
             <section className="brand-surface animate-slide-up rounded-2xl p-5 [animation-delay:220ms]">
               <h2 className="text-base font-bold">Détails de livraison</h2>
               <div className="mt-4 space-y-4 text-sm">
-                <Detail icon={MapPin} label="Destination" value={order.delivery_city || "À confirmer"} />
-                <Detail icon={Truck} label="Transporteur" value={order.carrier || "À confirmer"} />
-                <Detail icon={Package} label="Numéro de suivi" value={order.tracking_number || "À confirmer"} />
-                <Detail icon={CalendarDays} label="Livraison estimée" value={order.estimated_delivery || "À confirmer"} />
+                <Detail
+                  icon={MapPin}
+                  label="Destination"
+                  value={order.delivery_city || "À confirmer"}
+                />
+                <Detail
+                  icon={Truck}
+                  label="Transporteur"
+                  value={order.carrier || "À confirmer"}
+                />
+                <Detail
+                  icon={Package}
+                  label="Numéro de suivi"
+                  value={order.tracking_number || "À confirmer"}
+                />
+                <Detail
+                  icon={CalendarDays}
+                  label="Livraison estimée"
+                  value={order.estimated_delivery || "À confirmer"}
+                />
               </div>
             </section>
 
@@ -256,7 +293,8 @@ function TrackingContent({
                 Besoin d&apos;aide ?
               </p>
               <p className="mt-2 text-sm leading-relaxed text-white/70">
-                Notre équipe peut vous accompagner pour toute question sur votre commande.
+                Notre équipe peut vous accompagner pour toute question sur votre
+                commande.
               </p>
               <a
                 href="/devis"

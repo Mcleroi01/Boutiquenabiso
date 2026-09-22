@@ -34,7 +34,9 @@ export default function LoginPage() {
       if (result.error) throw new Error(result.error);
       router.replace(safeNextForRole(searchParams.get("next"), result.role));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Connexion impossible.");
+      setError(
+        caught instanceof Error ? caught.message : "Connexion impossible.",
+      );
     } finally {
       setBusy(false);
     }
@@ -57,7 +59,8 @@ export default function LoginPage() {
                 Bienvenue chez Boutique Na Biso
               </h1>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground md:text-base">
-                Connectez-vous pour gérer vos commandes et accéder à votre espace personnel.
+                Connectez-vous pour gérer vos commandes et accéder à votre
+                espace personnel.
               </p>
             </div>
           </div>
@@ -119,7 +122,10 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-muted-foreground">
               Nouveau client ?{" "}
-              <Link className="font-bold text-primary" href="/client/inscription">
+              <Link
+                className="font-bold text-primary"
+                href="/client/inscription"
+              >
                 Créer un compte
               </Link>
             </p>
